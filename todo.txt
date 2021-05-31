@@ -1,0 +1,38 @@
+dockit:
+* move to python
+        * move config to yaml
+x put junk files in ./prjinfo/local/tmp
+x add ./prjinfo/local to .git/.gitignore
+x per distro tmpdir
+* find setup file
+* persist container (per distro, last)
+* sub-commands
+    * build
+    * test
+    * debug
+    * shell
+    * admin-shell
+    * set default options
+    * add pkg/pip/npm to config
+* options
+    x distro
+    x setup file
+    * user personalization or not
+        * generic user or match calling user
+    * prj volume
+        container path /prj or actual full path
+        bind dir to /prj or copy somehow
+    * "make" target
+    * sudo priv or not
+    * rebuild container or not
+    * use local config or not
+* processing
+    * get default options
+    * make distro setup run just once
+    * make prj setup run just once
+    * import env settings before "make" command
+* distro setup
+    * set hostname
+    * setup timezone
+    * setup LANG/locale
+    * cd to prj dir w/o setup script (and w/o extra shell level?)

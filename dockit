@@ -1,0 +1,138 @@
+#!/bin/bash
+# dockit: utility to make containers for normal development easy
+# This is an early prototype
+
+set -xe
+
+MOUNTDIR=/prj
+SCRIPT_NAME=$(basename $0)
+
+# add a local rule to ignore things in .prjinfo/local
+# this should keep the status output clean
+# However any other items in ./prjinfo will show in the status
+add_local_gitignore() {
+    # skip this if this dir is not under git control
+    if [ -d .git/info ]; then
+        # is it already there?
+        if [ ! -f .git/info/exclude ] || \
+            ! grep -q '/.prjinfo/local' .git/info/exclude; then
+            # add the ignore rule
+            echo "'/.prjinfo/local" >>.git/info/exclude
+        fi
+    fi
+}
+
+mktemp() {
+    TMPDIR=.prjinfo/local/dockit-${DISTRO}
+    mkdir -p $TMPDIR
+    TMPFILE=$TMPDIR/vars
+
+    echo export MY_USER=$(whoami)  >$TMPFILE
+    echo export MY_UID=$(id -u)   >>$TMPFILE
+    echo export MY_GID=$(id -g)   >>$TMPFILE
+    echo export OPT_SUDO=true     >>$TMPFILE
+    echo export PRJ_SCRIPT=${PRJ_SCRIPT}  >>$TMPFILE
+
+    TMP1=$(cd . ; dirs +0)  # get project name with ~ for HOME
+    TMP1=${TMP1//~/H}       # replace tidle with 'H'
+    TMP1=${TMP1//\//_}      # replace all slashes with underscores
+    TMP2=${DISTRO//:/_}     # replace colons with underscores
+    CONTAINER_NAME=prj_${TMP1}_${TMP2}
+    echo $CONTAINER_NAME >$TMPDIR/name
+
+    cp $0 $TMPDIR
+}
+
+add_sudo_debian() {
+    apt update
+    apt install -y sudo
+}
+
+setup_distro() {
+    groupadd --gid $MY_GID $MY_USER
+    groupadd --system sudo_np
+    useradd  --uid $MY_UID --gid $MY_GID --shell /bin/bash -mN $MY_USER
+    add_sudo_debian
+    if $OPT_SUDO; then
+        adduser bill sudo_np
+    fi
+    mkdir -p /etc/sudoers.d/
+    echo "%sudo_np ALL=(ALL:ALL) NOPASSWD:ALL" >/etc/sudoers.d/sudo_np
+    export DEBIAN_FRONTEND=noninteractive
+}
+
+get_top_options() {
+    while true; do
+        case "$1" in
+        --distro)
+            DISTRO=$2
+            shift 2
+            ;;
+        --script)
+            PRJ_SCRIPT=$2
+            shift 2
+            ;;
+        --*)
+            echo unknown option "$1"
+            exit 2
+            ;;
+        *)
+            return
+            ;;
+        esac
+    done
+}
+
+top_level() {
+    DISTRO="ubuntu:20.04"
+    PRJ_SCRIPT="scripts/setup.sh"
+    get_top_options
+    shift 2 || true
+
+    export DISTRO
+    export PRJ_SCRIPT
+    add_local_gitignore
+    #find_container
+    #find_config
+    mktemp
+    docker run -it --rm \
+        -v "${PWD}:${MOUNTDIR}" $DISTRO \
+        ${MOUNTDIR}/$TMPDIR/$SCRIPT_NAME \
+        --std-flow "$@"
+}
+
+std_flow() {
+    CTRL_DIR=$(cd "$(dirname $0)"; pwd)
+    PRJ_DIR=$(cd $CTRL_DIR/../../..; pwd)
+
+    cd ${PRJ_DIR}
+
+    # read vars from TEMPFILE
+    source $CTRL_DIR/vars
+
+    # do common admin setup of the container
+    setup_distro
+
+    if [ -f "./${PRJ_SCRIPT}" ]; then
+        # now execute the command the user specified (or project specific setup)
+        ./${PRJ_SCRIPT} admin_setup
+
+        # project specific setup in user context
+        su $MY_USER ./${PRJ_SCRIPT} prj_setup
+
+        # project specific build/run, again in user context
+        su $MY_USER ./${PRJ_SCRIPT} prj_build
+    else
+        sudo -iu $MY_USER
+    fi
+    exit
+}
+
+case "$1" in
+--std-flow)
+    std_flow "$@"
+    ;;
+*)
+    top_level "$@"
+    ;;
+esac
