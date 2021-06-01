@@ -27,41 +27,99 @@ mktemp() {
     mkdir -p $TMPDIR
     TMPFILE=$TMPDIR/vars
 
-    echo export MY_USER=$(whoami)  >$TMPFILE
-    echo export MY_UID=$(id -u)   >>$TMPFILE
-    echo export MY_GID=$(id -g)   >>$TMPFILE
-    echo export OPT_SUDO=true     >>$TMPFILE
-    echo export PRJ_SCRIPT=${PRJ_SCRIPT}  >>$TMPFILE
+    echo export MY_USER=$(whoami)            >$TMPFILE
+    echo export MY_UID=$(id -u)             >>$TMPFILE
+    echo export MY_GID=$(id -g)             >>$TMPFILE
+    echo export OPT_SUDO=$OPT_SUDO          >>$TMPFILE
+    echo export PRJ_SCRIPT=${PRJ_SCRIPT}    >>$TMPFILE
 
     TMP1=$(cd . ; dirs +0)  # get project name with ~ for HOME
     TMP1=${TMP1//~/H}       # replace tidle with 'H'
     TMP1=${TMP1//\//_}      # replace all slashes with underscores
     TMP2=${DISTRO//:/_}     # replace colons with underscores
     CONTAINER_NAME=prj_${TMP1}_${TMP2}
-    echo $CONTAINER_NAME >$TMPDIR/name
+    echo $CONTAINER_NAME                    >$TMPDIR/name
 
     cp $0 $TMPDIR
 }
 
-add_sudo_debian() {
-    apt update
-    apt install -y sudo
+first_word() {
+    echo $1
+}
+
+get_distro_type() {
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        cat /etc/os-release
+        TYPE=${ID_LIKE:-$ID}
+        TYPE=$(first_word $TYPE)
+        VERSION_MAJOR=${VERSION_ID%%.*}
+        echo distro type is $TYPE
+    else
+        TYPE="unknown"
+        VERSION_MAJOR=0
+    fi
+}
+
+add_sudo() {
+    # do we already have it?
+    if which sudo >/dev/null 2>&1; then
+        return
+    fi
+
+    case "$TYPE" in
+    debian)
+        apt update
+        apt install -y sudo
+        ;;
+    fedora)
+        dnf install -y sudo
+        ;;
+    rhel)
+        yum install -y sudo
+        ;;
+    *)
+        echo "don't know how to install sudo for distro type: $TYPE"
+        exit 127
+        ;;
+    esac
 }
 
 setup_distro() {
+    get_distro_type
     groupadd --gid $MY_GID $MY_USER
-    groupadd --system sudo_np
     useradd  --uid $MY_UID --gid $MY_GID --shell /bin/bash -mN $MY_USER
-    add_sudo_debian
-    if $OPT_SUDO; then
-        adduser bill sudo_np
-    fi
-    mkdir -p /etc/sudoers.d/
-    echo "%sudo_np ALL=(ALL:ALL) NOPASSWD:ALL" >/etc/sudoers.d/sudo_np
+
+    # handle sudo options
+    case $OPT_SUDO in
+    yes)
+        add_sudo
+        groupadd --system sudo_np
+        adduser $MY_USER sudo_np
+        mkdir -p /etc/sudoers.d/
+        echo "%sudo_np ALL=(ALL:ALL) NOPASSWD:ALL" >/etc/sudoers.d/sudo_np
+        ;;
+    pwd)
+        add_sudo;
+        adduser $MY_USER sudo
+        ;;
+    no)
+        true
+        ;;
+    *)
+        "echo bad value for OPT_SUDO: $OPT_SUDO"
+        exit 127
+        ;;
+    esac
+
     export DEBIAN_FRONTEND=noninteractive
 }
 
 get_top_options() {
+    DISTRO="ubuntu:20.04"
+    PRJ_SCRIPT="scripts/setup.sh"
+    OPT_SUDO=yes
+
     SHIFT_COUNT=0
     while true; do
         case "$1" in
@@ -72,6 +130,24 @@ get_top_options() {
             ;;
         --script)
             PRJ_SCRIPT=$2
+            shift 2
+            SHIFT_COUNT=$(( $SHUFT_COUNT + 2 ))
+            ;;
+        --sudo)
+            case "$2" in
+            yes|YES)
+                OPT_SUDO=yes
+                ;;
+            no|NO)
+                OPT_SUDO=no
+                ;;
+            pwd|PWD)
+                OPT_SUDO=pwd
+                ;;
+            *)
+                echo "unknown option for --sudo given: $2"
+                exit 2
+            esac
             shift 2
             SHIFT_COUNT=$(( $SHUFT_COUNT + 2 ))
             ;;
@@ -87,8 +163,6 @@ get_top_options() {
 }
 
 top_level() {
-    DISTRO="ubuntu:20.04"
-    PRJ_SCRIPT="scripts/setup.sh"
     get_top_options "$@"
     shift $SHIFT_COUNT
 
