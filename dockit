@@ -62,15 +62,18 @@ setup_distro() {
 }
 
 get_top_options() {
+    SHIFT_COUNT=0
     while true; do
         case "$1" in
         --distro)
             DISTRO=$2
             shift 2
+            SHIFT_COUNT=$(( $SHUFT_COUNT + 2 ))
             ;;
         --script)
             PRJ_SCRIPT=$2
             shift 2
+            SHIFT_COUNT=$(( $SHUFT_COUNT + 2 ))
             ;;
         --*)
             echo unknown option "$1"
@@ -86,8 +89,8 @@ get_top_options() {
 top_level() {
     DISTRO="ubuntu:20.04"
     PRJ_SCRIPT="scripts/setup.sh"
-    get_top_options
-    shift 2 || true
+    get_top_options "$@"
+    shift $SHIFT_COUNT
 
     export DISTRO
     export PRJ_SCRIPT
