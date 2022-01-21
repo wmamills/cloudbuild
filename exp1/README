@@ -1,0 +1,141 @@
+This project does test builds on various "servers"
+
+Right now the test build is:
+    * build linux-5.1.3 aarch64
+    * support native and cross builds
+    * support any config supported by upstream
+        using allnoconfig as a small & fast build
+        using defconfig as a heavy build
+            aarch64 defconfig is a kitchen sink build,
+            it is not like armv7 *_defconfigs
+    * support running make with various settings of -j n
+    * Host is Ubuntu 18.04
+    * GCC is native gcc or deb: gcc-aarch64-linux-gnu
+        * right now thats "Linaro" 7.4.0 for cross builds & native
+        * x86 host gcc is also 7.4.0 but I doubt its the Linaro code base
+
+Example:
+$ ./run-tests -u -d kvm-x86 build allnoconfig 8 6 4 2 1 defconfig 8 6 4 2 1
+
+Creates the kvm-x86 VM (-u and name)
+
+Starts a screen job in the VM that runs the build sequence that includes 
+allnoconfig & defconfig for various values of -j N
+
+Checks on the VM's status every 60 seconds and prints what it is doing
+
+When the build sequence is done it retrieves the logs and creates summaries
+
+It then destroys the VM (-d)
+
+So far I have tested on:
+    * My local home desktop (rocky) i7-3770 4 cores, HT, 3.4 GHz 16GB desktop circa 2013
+        * from SATA III HD  (rocky-hd)
+        * from SATA III SSD (rocky-ssd)
+        * from tmpfs        (rocky-tmpfs)
+
+    * Some initial data from TI GT build server
+        * 2 Sockets, 8 cores each socket, 2 threads per core (32 logical cpus)
+        * 128 GB RAM
+        * from traditional HD (gt-hd)
+        * from PCIe SSD (gt-nvme)
+
+    * Amazon AWS instances
+        * aws-arm-x1    -> a1.medium     1 core,      2 GB     $0.025/hr
+        * aws-arm-x2    -> a1.large      2 cores,     4 GB     $0.05/hr
+        * aws-arm-x4    -> a1.xlarge     4 cores,     8 GB     $0.10/hr
+        * aws-arm-x8    -> a1.2xlarge    8 cores,    16 GB     $0.20/hr
+        * aws-arm-x16   -> a1.4xlarge   16 cores,    32 GB     $0.41/hr
+
+        * aws-x86-t3as  -> t3a.small    2 threads,    2 GB **  $0.0188/hr
+        * aws-x86-t3am  -> t3a.medium   2 threads,    4 GB **  $0.037/hr
+        * aws-x86-t3al  -> t3a.large    2 threads,    8 GB **  $0.0752/hr
+        * aws-x86-x2    -> m5.large     2 threads,    8 GB     $0.096/hr
+        * aws-x86-x4    -> m5.xlarge    4 threads,   16 GB     $0.192/hr
+        * aws-x86-x8    -> m5.xlarge    4 threads,   16 GB     $0.192/hr
+        * aws-x86-x16   -> m5.4xlarge   16 threads,  64 GB     $0.768/hr
+        * aws-x86-x48   -> m5a.12xlarge 48 threads, 192 GB     $2.064/hr
+        * aws-x86-x96   -> m5a.24xlarge 96 threads, 384 GB     $4.128/hr
+
+    Notes:
+        * Amazon CPU core is custom, Pekka believes it is ~ A75 + enhancements
+            * aarch32 supported, verified with:
+                $ sudo dpkg --add-architecture armhf
+                $ sudo apt update
+                $ sudo apt install hello:armhf
+                $ hello
+
+        *** x86 tiny instances are "burstable" in CPU (& RAM?)
+            so performance can vary
+            t2.small can use 20% of its CPU per hour
+                can run flat out for 12 mins then is rate limted
+            t3a.large can use 30% from each of its 2 CPU threads per hour
+                can run both cores flat out for 18 mins
+                OR run one of its cores flat out for 36 mins
+
+        For all x86 cores I checked, core count was logical cores not phy
+        So a "4 core" instance is really 2 cores with hyper-threading
+        (According to /proc/cpuinfo anyway)
+
+        total cost of all initial runs including misfires etc was $7.79
+
+    * packet.com bare-metal servers
+        * pkt-arm-c2l -> c2.large.arm   Ampere (AMI) 32 cores 3.3GHz, 128 GB    $1.00/hr
+        * pkt-arm-c1l -> c1.large.arm   ThunderX2 96 cores 2 GHz 128 GB         $0.050/hr
+
+        * pkt-x86-c2m -> c2.medium.x86  AMD 24 cores 2.2 GHz, HT,  64GB         $1.00/hr
+        * pkt-x86-c1s -> c1.small.x86   Xeon E3 4 cores 3.5 Ghz, HT, 32 GB      $0.40/hr
+        * pkt-x86-t1  -> t1.small.x86   Atom 4 cores 2.4Ghz, 8GB                $0.07/hr
+
+    Notes:
+        * all are SSD of various sizes
+        * all are 1, 2.5, or 10 Gb ENet
+        * total cost of all initial runs including misfires and learning: $10.47
+        * ThunderX is aarch64 only, it won't run QEMU armv7 w/ kvm acceleration
+        * Ampree is aarch64/aarch32, and should run armv7 QEMU 
+          or even direct user space with the right kernel
+
+Todo:
+More platforms:
+    * More GT build machine
+    * BBB
+    * X15
+    * AM65x
+    * K2H?
+    * J7?
+    * RaspberryPi v3 64 bit mode
+    * Espressobin
+    * Macchiatobin
+    * Hikey960 or 970
+    * Xilinx Ultra96
+    * Pekka's Google Coral board (iMX8m)
+    ? Google Compute, Microsoft Azure
+Nested platforms
+    * Build in docker container
+        * vary mem & cpus
+        * overlay FS vs dedicated partition?
+    x Build in KVM/QEMU VM from Linux
+        x Disk file
+        * dedicated partition or disk
+        * vary mem & cpus
+    * Build in Virtualbox from Windows host
+    * Build in Microsoft subsystem for Linux
+    * Build in Cross QEMU
+        * user & system
+        * with & without distcc
+More Automation
+    x AWS instance create / destroy
+    x Packet instance create / destroy
+    * Add more AWS & Packet instance types
+    x Script the SSH / Screen commands
+    * top level test scenarios
+More logging
+    x record uname and gcc version in machine log
+    * record whole sequences in config and make logs
+More test build targets
+    * Poky core-image-minimal & sato for various MACHINEs
+    * Poky ptests in QEMU
+    * tisdk / arago
+    * Buildroot
+        w/ & w/o build toolchain build
+    * drystone whetstone, stream, lmbench lat etc

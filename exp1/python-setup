@@ -1,0 +1,19 @@
+#!/bin/bash
+
+if [ -e ./venv ]; then
+	if [ -f ./venv/bin/activate ]; then
+		rm -rf venv
+	else
+		echo "./venv exists but is not a python venv, ABORT"
+		exit 2
+	fi
+fi
+
+python3 -m venv ./venv
+. ./venv/bin/activate
+pip3 install wheel
+pip3 install awscli		# NOT aws, that is not offical and is broken
+pip3 install boto3
+
+echo "You must source ./venv/bin/activate now and in every future shell"
+

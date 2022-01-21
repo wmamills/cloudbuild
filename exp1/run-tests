@@ -1,0 +1,187 @@
+#!/bin/bash
+
+START_DIR=$(cd $(dirname $0); pwd)
+ME=$(basename $0)
+
+# save for later
+PACKET_CLI_URL=https://github.com/packethost/packet-cli/releases/download/0.0.2/packet-linux-amd64
+
+# setup env only for vagrant, we don't want to export these secret env values
+# to the whole build process
+vagrant-env() {
+    . ~/.ssh/packet.com-access-key
+
+    # AWS stuff is in ~/.aws/* now not in environment
+    #. ~/.ssh/aws-iam-bill-env
+}
+
+up_server_vagrant() {
+    mkdir -p ./.tmp
+    (
+        vagrant-env;
+        vagrant up $NAME
+        vagrant ssh-config $NAME >./.tmp/ssh-config-$NAME
+    )
+    # append the normal ssh config for proxy defaults, gateways etc
+    cat ~/.ssh/config >>./.tmp/ssh-config-$NAME
+}
+
+halt_server_vagrant() {
+    (vagrant-env; vagrant halt $NAME)
+    rm ./.tmp/ssh-config-$NAME 2>/dev/null || true
+}
+
+destroy_server_vagrant() {
+    (vagrant-env; vagrant destroy -f $NAME)
+    rm ./.tmp/ssh-config-$NAME 2>/dev/null || true
+}
+
+status_server_vagrant() {
+    (vagrant-env; vagrant status $NAME)
+}
+
+SSH() {
+    ssh -F ./.tmp/ssh-config-$NAME "$@"
+}
+
+SCP() {
+    scp -F ./.tmp/ssh-config-$NAME "$@"
+}
+
+ssh_server_vagrant() {
+    SSH $NAME "$@"
+}
+
+scp_server_vagrant() {
+    SCP $NAME "$@"
+}
+
+do_build() {
+    # make dir to store the results for this machine
+    mkdir -p $NAME
+
+    if $AUTO_UP; then
+        (time ./$ME $NAME up ) 2>&1 | tee "$NAME/up-$(date +%Y-%m-%d-%H-%M-%S).log"
+    fi
+
+    SCP kernel-build.sh common-build.sh $NAME:
+    SSH -t $NAME ./kernel-build.sh start_screen "$@"
+    while ! SSH $NAME ./kernel-build.sh build-status; do
+        sleep 60
+    done
+
+    # get the logs
+    SCP "$NAME:*.log" $NAME/
+
+    if [ -n "$DONE_MODE" ]; then
+        (time ./$ME $NAME $DONE_MODE ) 2>&1 | tee "$NAME/${DONE_MODE}-$(date +%Y-%m-%d-%H-%M-%S).log"
+    fi
+
+    do_summary $NAME/*.log
+}
+
+do_summary() {
+    # and make shorter versions with just the times
+    # delete the result if empty
+    for i in $NAME/*.log; do
+        awk -e 'BEGIN {enabled=0} /^real/ {enabled=1} { if (enabled) print }' $i >$i.summary
+        if [ ! -s $i.summary ]; then
+            rm $i.summary
+        fi
+    done
+}
+
+do_global_status() {
+    echo "*** Vagrant status"
+    (vagrant-env; vagrant status)
+    echo "*** Status from AWS"
+    ( . venv/bin/activate; ./vs-ec2.py status )
+}
+
+do_global_summary() {
+    do_summary */*.log
+}
+
+do_global_destroy() {
+    echo "*** Vagrant destroy all"
+    (vagrant-env; vagrant destroy "$@")
+    echo "*** Status from AWS"
+    ( . venv/bin/activate; ./vs-ec2.py status )
+}
+
+AUTO_UP=false
+
+while true; do
+    case $1 in
+    -u|--up)
+        AUTO_UP=true
+        shift
+        ;;
+    -h|--halt)
+        DONE_MODE=halt
+        shift
+        ;;
+    -d|--destroy)
+        DONE_MODE=destroy
+        shift
+        ;;
+    *)
+        break
+        ;;
+    esac
+done
+
+NAME=$1
+shift 1
+MODE=_vagrant
+
+case $NAME in
+status)
+    do_global_status
+    exit 0
+    ;;
+summary)
+    do_global_summary
+    exit 0
+    ;;
+destroy)
+    do_global_destroy "$@"
+    exit 0
+    ;;
+*)
+    # not a global command, fall-through
+    ;;
+esac
+
+cmd=$1
+shift
+case $cmd in
+build)
+    do_build "$@"
+    ;;
+up)
+    up_server${MODE} "$@"
+    ;;
+halt)
+    halt_server${MODE} "$@"
+    ;;
+destroy)
+    destroy_server${MODE} "$@"
+    ;;
+status)
+    status_server${MODE} "$@"
+    ;;
+ssh)
+    ssh_server${MODE} "$@"
+    ;;
+scp)
+    scp_server${MODE} "$@"
+    ;;
+help)
+    do_help
+    ;;
+*)
+    echo "Bad command: $cmd"
+    do_help
+    ;;
+esac

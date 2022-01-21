@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# setup base vagrant
+sudo apt install vagrant vagrant-libvirt
+
+# needed for vagrant-aws
+sudo apt install ruby-dev libxml2-dev libcurl4-openssl-dev
+
+vagrant plugin install vagrant-libvirt
+vagrant plugin install vagrant-packet
+vagrant plugin install vagrant-aws
+#vagrant plugin install mutate
+#vagrant box add bento/ubuntu-18.04 --provider virtualbox
+#vagrant mutate bento/ubuntu-18.04 --provider libvirt
+vagrant box add packet.box https://github.com/jeefy/vagrant-packet/raw/master/packet.box
+vagrant box add dummy_aws https://github.com/mitchellh/vagrant-aws/raw/master/dummy.box

@@ -1,0 +1,206 @@
+# Work around old issue in unmaintained AWS vagrant provider
+# https://github.com/mitchellh/vagrant-aws/issues/566
+class Hash
+    def slice(*keep_keys)
+      h = {}
+      keep_keys.each { |key| h[key] = fetch(key) if has_key?(key) }
+      h
+    end unless Hash.method_defined?(:slice)
+    def except(*less_keys)
+      slice(*keys - less_keys)
+    end unless Hash.method_defined?(:except)
+end
+
+class VMInstance
+    @@all_inst = {}
+
+    # These are Ubuntu 18.04 in us-east-2 region, EBS root
+    @@aws_arm_ami = "ami-0f2057f28f0a44d06"
+    @@aws_x86_ami = "ami-0c55b159cbfafe1f0"
+
+    attr_accessor :name, :type, :cpus, :ram
+
+    # constructor
+    def initialize(name, type="none", cpus=0, ram=0)
+        @name = name
+        @type = type
+        @cpus = cpus
+        @ram = ram
+        self.class.add_instance(self)
+    end
+
+    def ami
+        if @name.start_with?("aws-x86")
+                return @@aws_x86_ami
+        elsif @name.start_with?("aws-arm")
+                return @@aws_arm_ami
+        else
+                return "none"
+        end
+    end
+
+    def self.add_instance(inst)
+        @@all_inst[inst.name] = inst
+    end
+
+    def self.find(name)
+        @@all_inst[name]
+    end
+
+    def self.all()
+        @@all_inst
+    end
+
+    def self.all_matching(prefix)
+        @@all_inst.select {|k,v| k.start_with?(prefix)}
+    end
+end
+
+# QEMU X86 does not do multithreaded cpu emulation so keep it simple
+VMInstance.new("qemu-x86-x1",   "",  1, 2)
+VMInstance.new("qemu-x86-x6",   "",  6, 12)
+
+# normal KVM cases
+VMInstance.new("kvm-x86-x32",   "", 32, 64)     # max out GT builder
+VMInstance.new("kvm-x86-x32m",  "", 32, 128)    # max out memory also
+VMInstance.new("kvm-x86-x28",   "", 28, 56)     # sane GT builder
+VMInstance.new("kvm-x86-x28m",  "", 28, 112)    # sane + extra memory
+VMInstance.new("kvm-x86-x8",    "", 8, 16)      # max out local machine
+VMInstance.new("kvm-x86-x6",    "", 6, 12)      # keep local machine resposive
+VMInstance.new("kvm-x86-x4",    "", 4, 8)       # see ho things scale
+VMInstance.new("kvm-x86-x1",    "", 1, 2)       # single threaded case
+
+# corner case exploration w/ kvm
+VMInstance.new("kvm-x86-x8-12", "", 8, 12)
+VMInstance.new("kvm-x86-x8-4",  "", 8, 4)
+VMInstance.new("kvm-x86-x8-1",  "", 8, 1)
+VMInstance.new("kvm-x86-x1-1",  "", 1, 1)
+VMInstance.new("kvm-x86-x1-4",  "", 1, 4)
+VMInstance.new("kvm-x86-x1-12", "", 1, 12)
+
+# AWS instance types, ARM
+VMInstance.new("aws-arm-x1",        "a1.medium",         1,    2)
+VMInstance.new("aws-arm-x2",        "a1.large",          2,    4)
+VMInstance.new("aws-arm-x4",        "a1.xlarge",         4,    8)
+VMInstance.new("aws-arm-x8",        "a1.2xlarge",        8,   16)
+VMInstance.new("aws-arm-x16",       "a1.4xlarge",       16,   32)
+
+# Burstable (and small) x86
+VMInstance.new("aws-x86-t3as",      "t3a.small",         2,    2)
+VMInstance.new("aws-x86-t3am",      "t3a.medium",        2,    4)
+VMInstance.new("aws-x86-t3al",      "t3a.large",         2,    8)
+
+# fixed performance x86, these have nvme also for testing
+VMInstance.new("aws-x86-m5adl",     "m5ad.large",        2,    8)
+VMInstance.new("aws-x86-m5adxl",    "m5ad.xlarge",       4,   16)
+VMInstance.new("aws-x86-m5ad2xl",   "m5ad.2xlarge",      8,   32)
+VMInstance.new("aws-x86-m5ad4xl",   "m5ad.4xlarge",     16,   64)
+VMInstance.new("aws-x86-m5ad12xl",  "m5ad.12xlarge",    48,  192)
+VMInstance.new("aws-x86-m5ad24xl",  "m5ad.24xlarge",    96,  384)
+
+# Packet instance types
+VMInstance.new("pkt-x86-t1",        "t1.small.x86",      4,    8)   # Atom
+VMInstance.new("pkt-x86-c1s",       "c1.small.x86",      4,   32)   # Xeon  
+VMInstance.new("pkt-x86-c2m",       "c2.medium.x86",    24,   64)   # AMD
+VMInstance.new("pkt-x86-m2xl",      "m2.xlarge.x86",    28,  384)   # AMD
+VMInstance.new("pkt-arm-c1l",       "c1.large.arm",     96,  128)   # ThunderX2
+VMInstance.new("pkt-arm-c2l",       "c2.large.arm",     32,  128)   # Ampere   
+
+
+Vagrant.configure("2") do |config|
+config.vm.synced_folder ".", "/vagrant", disabled: true
+
+    VMInstance.all.each_value do |inst|
+        config.vm.synced_folder ".", "/vagrant", disabled: true
+    end
+
+    VMInstance.all_matching("qemu-").each_value do |inst|
+      config.vm.define "#{inst.name}", autostart: false do |m|
+        #m.vm.box = "generic/ubuntu1804-wam"
+        m.vm.box = "bento/ubuntu-18.04"
+        m.vm.provider "libvirt" do |lv|
+            lv.cpus = inst.cpus
+            lv.memory = inst.ram*1024
+            lv.driver = "qemu"
+            lv.cpu_mode = "custom"
+            lv.cpu_model = "qemu64"
+            lv.random :model => 'random'
+        end
+      end
+    end
+
+    VMInstance.all_matching("kvm-").each_value do |inst|
+      config.vm.define "#{inst.name}", autostart: false do |m|
+        #m.vm.box = "generic/ubuntu1804-wam"
+        #m.vm.box = "ubuntu/bionic64"
+        #m.vm.box = "bento/ubuntu-18.04"
+        m.vm.box = "generic/ubuntu1804"
+        m.vm.provider "libvirt" do |lv|
+            lv.cpus = inst.cpus
+            lv.memory = inst.ram*1024
+            lv.driver = "kvm"
+            lv.random :model => 'random'
+        end
+      end
+    end
+
+    VMInstance.all_matching("pkt-").each_value do |inst|
+      config.vm.define "#{inst.name}", autostart: false do |m|
+        m.vm.box = "packet.box"
+
+        m.vm.provider "packet" do |packet, override|
+            # Access token and project id are in ~/.ssh/packet.com-access-key
+            # that file need to be sourced to use this Vagrantfile
+            #packet.packet_token = "XXXX"
+            #packet.project_id = "YYYYY"
+
+            packet.facility = "ewr1"
+            packet.plan = inst.type
+
+            # Either of these breaks the vagrant plugin, 
+            # it never uses the IP, it always tries to use the hostname
+            # if we don't supply one packet.com will assign one that 
+            # is actually usable in public dns
+            #packet.hostname = "#{inst.name}.dyn.mills-eng.com"
+            #packet.hostname = "#{inst.name}"
+
+            packet.operating_system = "ubuntu_18_04"
+
+            # Packet provisions machines with root so we must set this
+            override.ssh.username = "root"
+            override.ssh.private_key_path = "~/.ssh/id_rsa"
+        end
+      end
+    end
+
+    VMInstance.all_matching("aws-").each_value do |inst|
+      config.vm.define "#{inst.name}", autostart: false do |m|
+        m.vm.box = "dummy_aws"
+
+        m.vm.provider "aws" do |aws, override|
+            # since we have to hard code the AMI, 
+            # hard code the region it is valid for
+            aws.ami = inst.ami
+            aws.region = "us-east-2"
+            aws.keypair_name = "bill@rocky"
+            aws.security_groups = "ssh"
+
+            aws.instance_type = "#{inst.type}"
+
+            aws.block_device_mapping = [
+                { 'DeviceName' => '/dev/sda1', 'Ebs.VolumeSize' => 50 }
+            ]
+
+            aws.tags = {
+                'Name' => "#{inst.name}",
+            }
+
+            # Packet provisions machines with root so we must set this
+            override.ssh.username = "ubuntu"
+            override.ssh.private_key_path = "~/.ssh/id_rsa"
+        end
+      end
+    end
+
+    #config.vm.provision "file", source: "./kernel-build.sh", destination: "./"
+end
