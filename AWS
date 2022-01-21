@@ -1,0 +1,420 @@
+#! /bin/bash
+
+# Cut down version of Bill's cloudbuild tool
+# handles only AWS, no data disks, fewer options
+
+# Note this intentionally uses AWS CLI v1
+# At the time of writing AWS CLI v2 is ONLY delivered as a container image
+# and Amazon refuses to deliver any other way (pip apt snap flatpak etc)
+# This makes it very complex to use WITHIN a container
+# Longer term I will go directly to boto API's from python and opt out of AWS CLI
+
+abort() {
+    echo "Error: $@"
+    exit 2
+}
+
+exit_ok() {
+    echo "$@"
+    exit 0
+}
+
+check_setup() {
+    # make sure aws command is avilable
+    if ! which aws >/dev/null; then
+        echo "No aws command found"
+        echo "try: pip3 install --user awscli"
+        abort "need aws cli v1.x"
+    fi
+    # make sure user has aws credentials
+    if [ ! -r ~/.aws/credentials ]; then
+        echo "aws credentials are not setup"
+        echo "see https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html"
+        abort "can't read ~/.aws/credentials"
+    fi
+    # make sure user has ssh config set up to include ~/.ssh/config.d/*
+    if ! grep -qE '^ *[Ii]nclude  *config.d/*' ~/.ssh/config; then
+        echo "add:"
+        echo "Include config.d/* "
+        echo "to the top of ~/.ssh/config"
+        abort "need ~/.ssh/config.d support"
+    fi
+    local_config
+}
+
+set_defaults() {
+    : ${INSTANCE_TYPE:=m6i.2xlarge}
+    : ${DISTRO:=ubuntu-20.04}
+    : ${OS_DISK_SIZE:=250}
+    : ${AWS_NAME:=aws01}
+    : ${AWS_PROFILE:=default}
+    : ${AWS_USERNAME:=ubuntu}
+    : ${SSH_CONFIGD_NUM:=50}
+    : ${SSH_CONFIGD_OPTIONS:=    ForwardAgent yes}
+    : ${AWS_SEC_GROUPS:=ssh web}
+    : ${AWS_KEYPAIR_NAME:=bill@rocky}
+}
+
+local_config() {
+    # allow user to override default settings
+    if [ -r .prj-status ]; then
+        . .prj-status
+    fi
+
+    set_defaults
+
+    # computed vars
+    SSH_CONFIGD_FILE="$HOME/.ssh/config.d/${SSH_CONFIGD_NUM}-${AWS_NAME}"
+}
+
+aws_get_instance_id() {
+    # get instanceID
+    AWS_INSTANCE=$(aws ec2 describe-instances --filters "Name=tag:name,Values=$AWS_NAME" --query Reservations[*].Instances[*].[InstanceId] --output text)
+    if [[ $AWS_INSTANCE =~ ^i-[0-9a-f]*$ ]]; then
+        true
+    else
+        AWS_INSTANCE=none
+        false
+    fi
+}
+
+aws_get_state() {
+    # get instance state
+    AWS_STATE=$(aws ec2 describe-instances --filters "Name=tag:name,Values=$AWS_NAME" --query Reservations[*].Instances[*].State.Name --output text)
+    #echo "Current state is $AWS_STATE"
+}
+
+# for reference, not used
+aws_get_instance_and_state() {
+    # get instance ID and state
+    aws ec2 describe-instances \
+        --filters "Name=tag:name,Values=$AWS_NAME" \
+        --query 'Reservations[*].Instances[*].{InstanceId:InstanceId,State:State.Name}' \
+        --output text
+    # returns: i-0a1812426906d0002	stopped
+}
+
+# get the important data about instances in one region/profile
+aws_get_all_instances() {
+    # this is not right yet, the name: is an array of size 1 instead of being flat
+    aws ec2 describe-instances \
+        --query 'Reservations[*].Instances[*].{name: Tags[?Key == `name`].Value, id:InstanceId,state:State.Name}' \
+        --output text
+}
+
+aws_start_inst() {
+    echo "Starting $AWS_NAME $AWS_INSTANCE"
+    # start the instance
+    aws ec2 start-instances --instance-ids $AWS_INSTANCE >/dev/null
+
+    # wait for it to be running
+    aws ec2 wait instance-running --instance-id $AWS_INSTANCE
+}
+
+aws_get_ip() {
+    # get public IP address
+    NEW_IP=$(aws ec2 describe-instances \
+        --filters "Name=tag:name,Values=$AWS_NAME" \
+        --query Reservations[*].Instances[*].[PublicIpAddress] \
+        --output text)
+}
+
+get_old_ip() {
+    # forget any old IP address from known ssh keys
+    if [ -r $SSH_CONFIGD_FILE ]; then
+        OLD_IP=$(cat $SSH_CONFIGD_FILE | grep Hostname | awk -e '{ print $2 }')
+    else
+        OLD_IP=none
+    fi
+}
+
+forget_old_ip() {
+    # forget any old IP address from known ssh keys
+    if [ x"$OLD_IP" != x"none" ]; then
+        echo forgeting $OLD_IP
+        ssh-keygen -R $OLD_IP >/dev/null 2>&1
+    fi
+}
+
+# write the ssh config.d entry
+update_ssh_configd() {
+    cat >$SSH_CONFIGD_FILE <<EOF
+Host $AWS_NAME
+    Hostname $NEW_IP
+    User $ROOT_USER
+$SSH_CONFIGD_OPTIONS
+EOF
+}
+
+aws_check_ip() {
+    aws_get_ip
+    get_old_ip
+    if [ x"$NEW_IP" != x"$OLD_IP" ]; then
+        echo "syncing ssh state"
+        forget_old_ip
+        update_ssh_configd
+        SSH_STRICT_KEY="no"
+    else
+        SSH_STRICT_KEY="yes"
+    fi
+}
+
+wait_for_ssh() {
+    #echo "waiting for ssh"
+    while true; do
+        # prime the new ssh key for this IP
+        ssh $AWS_NAME -o "StrictHostKeyChecking $SSH_STRICT_KEY" \
+            -o ConnectTimeout=10 \
+            echo "$AWS_NAME is Ready at $NEW_IP" 2>/dev/null && return
+        echo "Still waiting for ssh"
+        sleep 10
+    done
+}
+
+aws_start() {
+    aws_get_instance_id || abort "No instance named $AWS_NAME found"
+    aws_get_state
+    if [ $AWS_STATE != "running" ]; then
+        aws_start_inst
+    else
+        echo "$AWS_NAME $AWS_INSTANCE is already running"
+    fi
+    aws_get_distro_info
+    aws_check_ip
+    wait_for_ssh $SSH_PRIME_NEEDED
+}
+
+aws_create_inst() {
+    echo "Creating $AWS_NAME as $INSTANCE_TYPE running $DISTRO"
+    aws ec2 run-instances \
+        --image-id $AMI \
+        --instance-type $INSTANCE_TYPE \
+        --block-device-mappings "DeviceName=$ROOT_DEVNAME,Ebs={VolumeSize=$OS_DISK_SIZE}" \
+        --tag-specifications "ResourceType=instance,Tags=[{Key=name,Value=$AWS_NAME}]" \
+        --security-groups $AWS_SEC_GROUPS \
+        --key-name $AWS_KEYPAIR_NAME >/dev/null
+    aws_get_instance_id || abort $AWS_NAME not found after create
+    echo "waiting for $AWS_NAME $AWS_INSTANCE to be running"
+    aws ec2 wait instance-running --instance-id $AWS_INSTANCE
+}
+
+aws_create() {
+    aws_get_instance_id && abort "Instance named $AWS_NAME $AWS_INSTANCE already exists"
+    aws_get_arch
+    aws_get_ami
+    aws_create_inst
+    aws_check_ip
+    wait_for_ssh $SSH_PRIME_NEEDED
+}
+
+aws_run() {
+    if aws_get_instance_id; then
+        aws_start
+    else
+        aws_create
+    fi
+}
+
+aws_stop() {
+    aws_get_instance_id || abort "No instance named $AWS_NAME found"
+
+    echo "Stopping $AWS_NAME $AWS_INSTANCE"
+    # stop the instance
+    aws ec2 stop-instances --instance-ids $AWS_INSTANCE >/dev/null
+
+    # wait for instance to be stopped
+    aws ec2 wait instance-stopped --instance-id $AWS_INSTANCE
+}
+
+# aws ec2 describe-instance-types --instance-types t2.micro --query 'InstanceTypes[*].[ProcessorInfo.SupportedArchitectures[*]]' --output text
+# returns: i386	x86_64
+# change to SupportedArchitectures[0] to just ge the first one
+# summary of all instance types
+# aws ec2 describe-instance-types --query 'InstanceTypes[*].[InstanceType,ProcessorInfo.SupportedArchitectures[0],VCpuInfo.DefaultVCpus,MemoryInfo.SizeInMiB]' --output text
+
+aws_get_arch() {
+    AWS_ARCH=$(aws ec2 describe-instance-types \
+        --instance-types $INSTANCE_TYPE \
+        --query 'InstanceTypes[*].[ProcessorInfo.SupportedArchitectures[0]]' \
+        --output text)
+    case $AWS_ARCH in
+    x86_64)
+        DEB_ARCH=amd64
+        RH_ARCH=x86_64
+        ;;
+    arm64)
+        DEB_ARCH=arm64
+        RH_ARCH=aarch64
+        ;;
+    *)
+        abort unknow CPU archetecture $AWS_ARCH
+        ;;
+    esac
+}
+
+aws_get_distro_info() {
+    UBUNTU_OWNER=099720109477
+    DEBIAN_DAILY_OWNER=903794441882
+    DEBIAN_OWNER=136693071363
+    CENTOS_OWNER=125523088429
+    FEDORA_OWNER=125523088429
+
+    case $DISTRO in
+    ubuntu-20.04)
+        ROOT_USER=ubuntu
+        OWNER=$UBUNTU_OWNER
+        IMAGE_NAME="ubuntu/images/hvm-ssd/ubuntu-focal-20.04-${DEB_ARCH}-server-"
+        ;;
+    ubuntu-18.04)
+        ROOT_USER=ubuntu
+        OWNER=$UBUNTU_OWNER
+        IMAGE_NAME="ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-${DEB_ARCH}-server-"
+        ;;
+    debian-10)
+        ROOT_USER=admin
+        OWNER=$DEBIAN_OWNER
+        IMAGE_NAME="debian-10-${DEB_ARCH}-"
+        ;;
+    debian-11)
+        ROOT_USER=admin
+        OWNER=$DEBIAN_OWNER
+        IMAGE_NAME="debian-11-${DEB_ARCH}-"
+        ;;
+    debian-sid|debian-unstable)
+        ROOT_USER=admin
+        OWNER=$DEBIAN_DAILY_OWNER
+        IMAGE_NAME="debian-sid-${DEB_ARCH}-daily-"
+        ;;
+    centos-7*|centos-8*)
+        ROOT_USER=centos
+        OWNER=$CENTOS_OWNER
+        IMAGE_NAME="CentOS ${DISTRO#centos-}"
+        ;;
+    centos-stream-8)
+        # assume centos-stream-8 is the exception for ROOT_USER
+        ROOT_USER=centos
+        OWNER=$CENTOS_OWNER
+        REST=${DISTRO#centos-stream}
+        REST=${REST#-}
+        IMAGE_NAME="CentOS Stream ${REST}"
+        ;;
+    centos-stream*)
+        # current centos-stream-9 images use e2c-user and root user.
+        # assume that is the new norm
+        # set distro to centos-stream-{8,9,etc} or just centos-stream for latest
+        ROOT_USER=ec2-user
+        OWNER=$CENTOS_OWNER
+        REST=${DISTRO#centos-stream}
+        REST=${REST#-}
+        IMAGE_NAME="CentOS Stream ${REST}"
+        ;;
+    Fedora-Cloud-Base*|Fedora-AtomicHost*|fedora-coreos*)
+        # Fedora spins too fast to keep up.  Let the distro name be the image name
+        # Set distro to Fedora-AtomicHost-NN or Fedora-Cloud-Base-NN or fedora-coreos-NN
+        # note that coreos is all lower case
+        # NN is 34 35 etc 
+        #    or Rawhide (Atomic and Cloud-Base only)
+        ROOT_USER=fedora
+        OWNER=$FEDORA_OWNER
+        IMAGE_NAME="${DISTRO}"
+        ;;        
+    *)
+        abort Unknown distro $DISTRO
+        ;;
+    esac
+}
+
+aws_get_ami() {
+    aws_get_distro_info
+
+    # find images that meet the creteria and sort them and take the "newest"
+    AMI_NAME=$(aws ec2 describe-images \
+        --owner $OWNER \
+        --filter Name=architecture,Values=$AWS_ARCH \
+            "Name=name,Values=${IMAGE_NAME}*" \
+        --query 'Images[*].[ImageId,Name]' \
+        --output text | sort -r --key 2 | head -n 1)
+    AMI=$(echo $AMI_NAME | awk -e '{print $1}' )
+    if [[ $AMI =~ ^ami-[0-9a-f]*$ ]]; then
+        echo "found AMI $AMI_NAME"
+        # describe given image with full JSON
+        # aws ec2 describe-images --image-ids $AMI
+            # aws ec2 describe-images --image-id  $AMI
+        ROOT_DEVNAME=$(aws ec2 describe-images \
+            --image-id  $AMI \
+            --query "Images[*].RootDeviceName" --output text)
+        : ${ROOT_DEVNAME:=/dev/sda1}    # just in case it is not set
+        true
+    else
+        echo "no AMI found for $DISTRO on $AWS_ARCH"
+        AMI=none
+        false
+    fi
+}
+
+aws_test() {
+    aws_get_instance_id && abort "Won't test if name already exists"
+    aws_run
+    ssh $AWS_NAME cat /etc/os-release
+    aws_stop
+    aws_start
+    ssh $AWS_NAME free -h
+    aws_destroy
+}
+
+aws_test_basic() {
+    aws_create
+    ssh $AWS_NAME cat /etc/os-release
+    ssh $AWS_NAME uname -a
+    ssh $AWS_NAME lscpu
+    ssh $AWS_NAME free -h
+    ssh $AWS_NAME df -h .
+    aws_destroy
+}
+
+aws_destroy() {
+    if aws_get_instance_id; then
+        echo "destoying $AWS_NAME $AWS_INSTANCE"
+        aws ec2 create-tags --resources $AWS_INSTANCE --tags "Key=name,Value=DELETED_${AWS_NAME}"
+        aws ec2 terminate-instances --instance-ids $AWS_INSTANCE >/dev/null
+        aws ec2 wait instance-terminated --instance-ids $AWS_INSTANCE
+    else
+        echo "$AWS_NAME does not exist"
+    fi
+    if [ -e $SSH_CONFIGD_FILE ]; then
+        echo "removing $SSH_CONFIGD_FILE"
+        rm $SSH_CONFIGD_FILE
+    fi
+}
+
+aws_status() {
+    aws_get_all_instances
+}
+
+# notes:
+# 3rd party cost reporter:
+# curl -L 'ec2.shop?region=us-west-1&filter=.4xlarge'
+# curl -L 'ec2.shop?region=us-west-1&filter=.4xlarge' -H 'accept: json' | jq
+# https://github.com/yeo/ec2.shop#api-document
+# does not seem to have some new instance types like m6i
+
+check_setup
+case $1 in
+run|stop|destroy|start|create|test*|status)
+    aws_${1}
+    ;;
+"")
+    echo "usage: ./aws.sh run|stop|destroy|start"
+    echo "run       create or start the machine"
+    echo "stop      stop but don't destroy the machine"
+    echo "destroy   terminate the instance and destroy disk data"
+    echo "start     start machine if stopped, don't ever create"
+    echo "create    create the machine or fail if existing"
+    echo "          useful to ensure a clean start"
+    echo "status    list all instances in given profile"
+    exit 1
+    ;;
+*)
+    abort "Unknown command $1"
+    ;;
+esac
