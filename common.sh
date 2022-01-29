@@ -25,7 +25,7 @@ add_local_gitignore() {
         if [ ! -f .git/info/exclude ] || \
             ! grep -q '/.prjinfo/local' .git/info/exclude; then
             # add the ignore rule
-            echo "'/.prjinfo/local" >>.git/info/exclude
+            echo "/.prjinfo/local" >>.git/info/exclude
         fi
     fi
 }
