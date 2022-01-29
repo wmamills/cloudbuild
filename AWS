@@ -49,14 +49,16 @@ set_defaults() {
     : ${SSH_CONFIGD_NUM:=50}
     : ${SSH_CONFIGD_OPTIONS:=    ForwardAgent yes}
     : ${AWS_SEC_GROUPS:=ssh web}
-    : ${AWS_KEYPAIR_NAME:=bill@rocky}
+    : ${AWS_KEYPAIR_NAME:=default}
 }
 
 local_config() {
     # allow user to override default settings
-    if [ -r .prj-status ]; then
-        . .prj-status
-    fi
+    for d in ~/.prjinfo .prjinfo .prjinfo/local ; do
+        if [ -r $d/setenv ]; then
+            . $d/setenv
+        fi
+    done
 
     set_defaults
 
