@@ -31,7 +31,9 @@ add_local_gitignore() {
 }
 
 mktemp() {
-    TMPDIR=.prjinfo/local/${SCRIPT_NAME}-${DISTRO}
+    local DISTRO_NAME=${DISTRO//:/-}     # replace colons with dash
+
+    TMPDIR=.prjinfo/local/${SCRIPT_NAME}-${DISTRO_NAME}
     mkdir -p $TMPDIR
     TMPFILE=$TMPDIR/vars
 
@@ -42,10 +44,9 @@ mktemp() {
     echo export PRJ_SCRIPT=${PRJ_SCRIPT}    >>$TMPFILE
 
     TMP1=$(cd . ; dirs +0)  # get project name with ~ for HOME
-    TMP1=${TMP1//~/H}       # replace tidle with 'H'
+    TMP1=${TMP1//\~/H}       # replace tidle with 'H'
     TMP1=${TMP1//\//_}      # replace all slashes with underscores
-    TMP2=${DISTRO//:/_}     # replace colons with underscores
-    CONTAINER_NAME=prj_${TMP1}_${TMP2}
+    CONTAINER_NAME=prj_${TMP1}__${DISTRO_NAME}
     echo $CONTAINER_NAME                    >$TMPDIR/name
 
     cp $SCRIPT_FULL_PATH $SCRIPT_DIR/common.sh $TMPDIR
