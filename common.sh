@@ -1,6 +1,20 @@
 # Useful functions for multiple scripts in this family
 # This file needs to be sourced
 
+abort() {
+    echo "Error: $@"
+    exit 2
+}
+
+exit_ok() {
+    echo "$@"
+    exit 0
+}
+
+first_word() {
+    echo $1
+}
+
 # add a local rule to ignore things in .prjinfo/local
 # this should keep the status output clean
 # However any other items in ./prjinfo will show in the status
@@ -35,10 +49,6 @@ mktemp() {
     echo $CONTAINER_NAME                    >$TMPDIR/name
 
     cp $SCRIPT_FULL_PATH $SCRIPT_DIR/common.sh $TMPDIR
-}
-
-first_word() {
-    echo $1
 }
 
 get_distro_type() {

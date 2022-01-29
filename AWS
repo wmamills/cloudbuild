@@ -9,15 +9,12 @@
 # This makes it very complex to use WITHIN a container
 # Longer term I will go directly to boto API's from python and opt out of AWS CLI
 
-abort() {
-    echo "Error: $@"
-    exit 2
-}
+MOUNTDIR=/prj
+SCRIPT_NAME=$(basename $0)
+SCRIPT_FULL_PATH=$(readlink -f $0)
+SCRIPT_DIR=$(dirname $SCRIPT_FULL_PATH)
 
-exit_ok() {
-    echo "$@"
-    exit 0
-}
+source $SCRIPT_DIR/common.sh
 
 check_setup() {
     # make sure aws command is avilable
