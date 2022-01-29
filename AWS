@@ -40,7 +40,7 @@ check_setup() {
 }
 
 set_defaults() {
-    : ${INSTANCE_TYPE:=m6i.2xlarge}
+    : ${AWS_INSTANCE_TYPE:=m6i.2xlarge}
     : ${DISTRO:=ubuntu-20.04}
     : ${OS_DISK_SIZE:=250}
     : ${AWS_NAME:=aws01}
@@ -182,10 +182,10 @@ aws_start() {
 }
 
 aws_create_inst() {
-    echo "Creating $AWS_NAME as $INSTANCE_TYPE running $DISTRO"
+    echo "Creating $AWS_NAME as $AWS_INSTANCE_TYPE running $DISTRO"
     aws ec2 run-instances \
         --image-id $AMI \
-        --instance-type $INSTANCE_TYPE \
+        --instance-type $AWS_INSTANCE_TYPE \
         --block-device-mappings "DeviceName=$ROOT_DEVNAME,Ebs={VolumeSize=$OS_DISK_SIZE}" \
         --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$AWS_NAME}]" \
         --security-groups $AWS_SEC_GROUPS \
@@ -231,7 +231,7 @@ aws_stop() {
 
 aws_get_arch() {
     AWS_ARCH=$(aws ec2 describe-instance-types \
-        --instance-types $INSTANCE_TYPE \
+        --instance-types $AWS_INSTANCE_TYPE \
         --query 'InstanceTypes[*].[ProcessorInfo.SupportedArchitectures[0]]' \
         --output text)
     case $AWS_ARCH in
