@@ -69,7 +69,7 @@ local_config() {
 
 aws_get_instance_id() {
     # get instanceID
-    AWS_INSTANCE=$(aws ec2 describe-instances --filters "Name=tag:name,Values=$AWS_NAME" --query Reservations[*].Instances[*].[InstanceId] --output text)
+    AWS_INSTANCE=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=$AWS_NAME" --query Reservations[*].Instances[*].[InstanceId] --output text)
     if [[ $AWS_INSTANCE =~ ^i-[0-9a-f]*$ ]]; then
         true
     else
@@ -80,7 +80,7 @@ aws_get_instance_id() {
 
 aws_get_state() {
     # get instance state
-    AWS_STATE=$(aws ec2 describe-instances --filters "Name=tag:name,Values=$AWS_NAME" --query Reservations[*].Instances[*].State.Name --output text)
+    AWS_STATE=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=$AWS_NAME" --query Reservations[*].Instances[*].State.Name --output text)
     #echo "Current state is $AWS_STATE"
 }
 
@@ -88,7 +88,7 @@ aws_get_state() {
 aws_get_instance_and_state() {
     # get instance ID and state
     aws ec2 describe-instances \
-        --filters "Name=tag:name,Values=$AWS_NAME" \
+        --filters "Name=tag:Name,Values=$AWS_NAME" \
         --query 'Reservations[*].Instances[*].{InstanceId:InstanceId,State:State.Name}' \
         --output text
     # returns: i-0a1812426906d0002	stopped
@@ -98,7 +98,7 @@ aws_get_instance_and_state() {
 aws_get_all_instances() {
     # this is not right yet, the name: is an array of size 1 instead of being flat
     aws ec2 describe-instances \
-        --query 'Reservations[*].Instances[*].{name: Tags[?Key == `name`].Value, id:InstanceId,state:State.Name}' \
+        --query 'Reservations[*].Instances[*].{name: Tags[?Key == `Name`].Value, id:InstanceId,state:State.Name}' \
         --output text
 }
 
@@ -114,7 +114,7 @@ aws_start_inst() {
 aws_get_ip() {
     # get public IP address
     NEW_IP=$(aws ec2 describe-instances \
-        --filters "Name=tag:name,Values=$AWS_NAME" \
+        --filters "Name=tag:Name,Values=$AWS_NAME" \
         --query Reservations[*].Instances[*].[PublicIpAddress] \
         --output text)
 }
@@ -190,7 +190,7 @@ aws_create_inst() {
         --image-id $AMI \
         --instance-type $INSTANCE_TYPE \
         --block-device-mappings "DeviceName=$ROOT_DEVNAME,Ebs={VolumeSize=$OS_DISK_SIZE}" \
-        --tag-specifications "ResourceType=instance,Tags=[{Key=name,Value=$AWS_NAME}]" \
+        --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$AWS_NAME}]" \
         --security-groups $AWS_SEC_GROUPS \
         --key-name $AWS_KEYPAIR_NAME >/dev/null
     aws_get_instance_id || abort $AWS_NAME not found after create
@@ -375,7 +375,7 @@ aws_test_basic() {
 aws_destroy() {
     if aws_get_instance_id; then
         echo "destoying $AWS_NAME $AWS_INSTANCE"
-        aws ec2 create-tags --resources $AWS_INSTANCE --tags "Key=name,Value=DELETED_${AWS_NAME}"
+        aws ec2 create-tags --resources $AWS_INSTANCE --tags "Key=Name,Value=DELETED_${AWS_NAME}"
         aws ec2 terminate-instances --instance-ids $AWS_INSTANCE >/dev/null
         aws ec2 wait instance-terminated --instance-ids $AWS_INSTANCE
     else
