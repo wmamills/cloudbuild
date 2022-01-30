@@ -9,6 +9,13 @@
 # This makes it very complex to use WITHIN a container
 # Longer term I will go directly to boto API's from python and opt out of AWS CLI
 
+set -e
+
+if [ "$1" = "-d" ]; then
+    set -x
+    shift
+fi
+
 MOUNTDIR=/prj
 SCRIPT_NAME=$(basename $0)
 SCRIPT_FULL_PATH=$(readlink -f $0)
