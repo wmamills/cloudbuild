@@ -358,7 +358,8 @@ aws_get_ami() {
     fi
 }
 
-aws_test() {
+# test life cycle commands
+aws_test_lc() {
     aws_get_instance_id && abort "Won't test if name already exists"
     aws_run
     ssh $AWS_NAME cat /etc/os-release
@@ -368,6 +369,7 @@ aws_test() {
     aws_destroy
 }
 
+# test to see if a distro works
 aws_test_basic() {
     aws_create
     ssh $AWS_NAME cat /etc/os-release
@@ -397,20 +399,30 @@ aws_status() {
     aws_get_all_instances
 }
 
-# notes:
-# 3rd party cost reporter:
-# curl -L 'ec2.shop?region=us-west-1&filter=.4xlarge'
-# curl -L 'ec2.shop?region=us-west-1&filter=.4xlarge' -H 'accept: json' | jq
-# https://github.com/yeo/ec2.shop#api-document
-# does not seem to have some new instance types like m6i
+is_action() {
+    case "$1" in
+    run|stop|destroy|start|create|test_basic|test_lc|status)
+        return 0
+        ;;
+    *)
+        return 1
+        ;;
+    esac
+}
 
-check_setup
-case $1 in
-run|stop|destroy|start|create|test*|status)
-    aws_${1}
-    ;;
-"")
-    echo "usage: ./aws.sh run|stop|destroy|start"
+is_default_server_name() {
+    case "$1" in
+    default|def)
+        return 0
+        ;;
+    *)
+        return 1
+        ;;
+    esac
+}
+
+help() {
+    echo "usage: AWS [server-name] run|stop|destroy|start"
     echo "run       create or start the machine"
     echo "stop      stop but don't destroy the machine"
     echo "destroy   terminate the instance and destroy disk data"
@@ -418,9 +430,34 @@ run|stop|destroy|start|create|test*|status)
     echo "create    create the machine or fail if existing"
     echo "          useful to ensure a clean start"
     echo "status    list all instances in given profile"
+}
+
+# notes:
+# 3rd party cost reporter:
+# curl -L 'ec2.shop?region=us-west-1&filter=.4xlarge'
+# curl -L 'ec2.shop?region=us-west-1&filter=.4xlarge' -H 'accept: json' | jq
+# https://github.com/yeo/ec2.shop#api-document
+# does not seem to have some new instance types like m6i
+
+# main
+check_setup
+
+# get the server name to work with
+# if not supplied or is the "default" name, use config from project or user
+if ! is_action "$1"; then
+    if ! is_default_server_name "$1"; then
+        AWS_NAME=$1
+    fi
+    shift
+else
+    NO_SERVER_NAME=true
+fi
+
+if is_action $1; then
+    aws_${1}
+elif [ -z "$1" ]; then
+    help
     exit 1
-    ;;
-*)
+else
     abort "Unknown command $1"
-    ;;
-esac
+fi
