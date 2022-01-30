@@ -280,6 +280,12 @@ aws_get_distro_info() {
         OWNER=$UBUNTU_OWNER
         IMAGE_NAME="ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-${DEB_ARCH}-server-"
         ;;
+    ubuntu*)
+        ROOT_USER=ubuntu
+        OWNER=$UBUNTU_OWNER
+        REST=${DISTRO#ubuntu-}
+        IMAGE_NAME="ubuntu/images/hvm-ssd/ubuntu-*-${REST}-${DEB_ARCH}-server-"
+        ;;
     debian-10)
         ROOT_USER=admin
         OWNER=$DEBIAN_OWNER
@@ -294,6 +300,11 @@ aws_get_distro_info() {
         ROOT_USER=admin
         OWNER=$DEBIAN_DAILY_OWNER
         IMAGE_NAME="debian-sid-${DEB_ARCH}-daily-"
+        ;;
+    debian*)
+        ROOT_USER=admin
+        OWNER=$DEBIAN_OWNER
+        IMAGE_NAME="${DISTRO}-${DEB_ARCH}-"
         ;;
     centos-7*|centos-8*)
         ROOT_USER=centos
@@ -463,8 +474,8 @@ help() {
     echo "--os-disk         size in GB of root disk"
     echo ""
     echo "supported distros are:"
-    echo "  ubuntu-20.04 ubuntu-18.04"
-    echo "  debian-11 debian-10 debian-unstable"
+    echo "  ubuntu-20.04 ubuntu-18.04 ubuntu*"
+    echo "  debian-11 debian-10 debian-unstable debian*"
     echo "  centos-7 centos-8"
     echo "  centos-stream-8 centos-stream-*"
     echo "  fedora-coreos*"
