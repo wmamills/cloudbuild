@@ -20,6 +20,7 @@ MOUNTDIR=/prj
 SCRIPT_NAME=$(basename $0)
 SCRIPT_FULL_PATH=$(readlink -f $0)
 SCRIPT_DIR=$(dirname $SCRIPT_FULL_PATH)
+ALL_MODE=false
 
 source $SCRIPT_DIR/common.sh
 
@@ -384,6 +385,26 @@ aws_get_ami() {
     fi
 }
 
+aws_image() {
+    aws_get_arch
+    aws_get_distro_info
+
+    if $ALL_MODE; then
+        PAGER="cat"
+        IMAGE_NAME=""
+    else
+        PAGER="head -n 1"
+    fi
+
+    # find images that meet the creteria and sort them and take the "newest"
+    aws ec2 describe-images \
+        --owner $OWNER \
+        --filter Name=architecture,Values=$AWS_ARCH \
+            "Name=name,Values=${IMAGE_NAME}*" \
+        --query 'Images[*].[ImageId,Name]' \
+        --output text | sort -r --key 2 | $PAGER
+}
+
 # test life cycle commands
 aws_test_lc() {
     aws_get_instance_id && abort "Won't test if name already exists"
@@ -437,7 +458,7 @@ aws_status() {
 
 is_action() {
     case "$1" in
-    run|stop|destroy|start|create|test_basic|test_lc|status|get-console)
+    run|stop|destroy|start|create|test_basic|test_lc|status|get-console|image)
         return 0
         ;;
     *)
@@ -467,11 +488,14 @@ help() {
     echo "          useful to ensure a clean start"
     echo "status    list all instances in given profile"
     echo "get-console  get console output"
+    echo "image     list image(s) for distro and instance type"
     echo ""
     echo "options for create (or run):"
     echo "--distro name     specify the distro"
     echo "--inst            AWS instance type"
     echo "--os-disk         size in GB of root disk"
+    echo "options for image:"
+    echo "--all             list all images from the distro owner"
     echo ""
     echo "supported distros are:"
     echo "  ubuntu-20.04 ubuntu-18.04 ubuntu*"
@@ -504,6 +528,10 @@ get_aws_options() {
             shift 2
             SHIFT_COUNT=$(( $SHIFT_COUNT + 2 ))
             ;;
+        --all)
+            ALL_MODE=true
+            shift 1
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 1 ))
             ;;
         --*)
             echo unknown option "$1"
