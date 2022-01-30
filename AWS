@@ -68,9 +68,13 @@ local_config() {
     done
 
     set_defaults
+}
 
+# after command line args are processed, calculate config
+compute_config() {
     # computed vars
     SSH_CONFIGD_FILE="$HOME/.ssh/config.d/${SSH_CONFIGD_NUM}-${AWS_NAME}"
+
 }
 
 aws_get_instance_id() {
@@ -430,7 +434,46 @@ help() {
     echo "create    create the machine or fail if existing"
     echo "          useful to ensure a clean start"
     echo "status    list all instances in given profile"
+    echo ""
+    echo "options for create (or run):"
+    echo "--distro name     specify the distro"
+    echo "--inst            AWS instance type"
+    echo "--os-disk         size in GB of root disk"
+    echo ""
+    echo "example:"
+    echo "  $ AWS my-server run --distro ubuntu-20.04 --inst t3.small --os-disk 10"
 }
+
+get_aws_options() {
+    SHIFT_COUNT=0
+    while true; do
+        case "$1" in
+        --distro)
+            DISTRO=$2
+            shift 2
+            SHIFT_COUNT=$(( $SHUFT_COUNT + 2 ))
+            ;;
+        --inst)
+            AWS_INSTANCE_TYPE=$2
+            shift 2
+            SHIFT_COUNT=$(( $SHUFT_COUNT + 2 ))
+            ;;
+        --os-disk)
+            OS_DISK_SIZE=$2
+            shift 2
+            SHIFT_COUNT=$(( $SHUFT_COUNT + 2 ))
+            ;;
+        --*)
+            echo unknown option "$1"
+            exit 2
+            ;;
+        *)
+            return
+            ;;
+        esac
+    done
+}
+
 
 # notes:
 # 3rd party cost reporter:
@@ -454,7 +497,10 @@ else
 fi
 
 if is_action $1; then
-    aws_${1}
+    ACTION=$1; shift
+    get_aws_options "$@"; shift $SHIFT_COUNT
+    compute_config
+    aws_${ACTION}
 elif [ -z "$1" ]; then
     help
     exit 1
