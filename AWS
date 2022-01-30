@@ -399,13 +399,23 @@ aws_destroy() {
     fi
 }
 
+aws_get-console() {
+    aws_get_instance_id || abort "No instance named $AWS_NAME found"
+    aws_get_state
+    if [ $AWS_STATE != "running" ]; then
+        echo "$AWS_NAME $AWS_INSTANCE is not running"
+    else
+        aws ec2 get-console-output --instance-id $AWS_INSTANCE --output text
+    fi    
+}
+
 aws_status() {
     aws_get_all_instances
 }
 
 is_action() {
     case "$1" in
-    run|stop|destroy|start|create|test_basic|test_lc|status)
+    run|stop|destroy|start|create|test_basic|test_lc|status|get-console)
         return 0
         ;;
     *)
@@ -434,6 +444,7 @@ help() {
     echo "create    create the machine or fail if existing"
     echo "          useful to ensure a clean start"
     echo "status    list all instances in given profile"
+    echo "get-console  get console output"
     echo ""
     echo "options for create (or run):"
     echo "--distro name     specify the distro"
