@@ -1,5 +1,11 @@
 #!/bin/bash
 
+echo "This does not work anymore."
+echo "It worked at one time on Ubuntu 18.04 but now does not even on 18.04"
+echo "vagrant plugins have conflicting dependencies"
+echo "the wider vagrant eco system seems to be very fragile"
+exit 2
+
 do_venv() {
     . venv/bin/activate
     pip3 install boto3
@@ -8,7 +14,7 @@ do_venv() {
 # if fresh boot of container or VM package list will be incomplete and out of data
 sudo apt update
 
-sudo apt install python3-pip python3-venv
+sudo apt install -y python3-pip python3-venv
 
 python3 -m venv venv
 (do_venv)
