@@ -318,16 +318,27 @@ aws_get_distro_info() {
         REST=${REST#-}
         IMAGE_NAME="CentOS Stream ${REST}"
         ;;
-    Fedora-Cloud-Base*|Fedora-AtomicHost*|fedora-coreos*)
+    fedora-coreos*)
         # Fedora spins too fast to keep up.  Let the distro name be the image name
-        # Set distro to Fedora-AtomicHost-NN or Fedora-Cloud-Base-NN or fedora-coreos-NN
-        # note that coreos is all lower case
+        # Set distro to fedora-coreos-NN
         # NN is 34 35 etc 
-        #    or Rawhide (Atomic and Cloud-Base only)
-        ROOT_USER=fedora
+        # TODO: currently this find the latest image which is probably testing or next
+        ROOT_USER=core
         OWNER=$FEDORA_OWNER
         IMAGE_NAME="${DISTRO}"
         ;;        
+    fedora*)
+        # Fedora spins too fast to keep up.  Let the distro name be the image name
+        # for a server, a user would expect fedora-NN to be Fedora-Cloud-Base-NN
+        # NN is 34 35 etc or rawhide
+        ROOT_USER=fedora
+        OWNER=$FEDORA_OWNER
+        REST=${DISTRO#fedora}
+        if [ x"$REST" == x"-rawhide" ]; then
+            REST="-Rawhide"
+        fi
+        IMAGE_NAME="Fedora-Cloud-Base${REST}"
+        ;;
     *)
         abort Unknown distro $DISTRO
         ;;
