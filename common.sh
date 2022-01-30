@@ -133,12 +133,12 @@ get_common_options() {
         --distro)
             DISTRO=$2
             shift 2
-            SHIFT_COUNT=$(( $SHUFT_COUNT + 2 ))
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 2 ))
             ;;
         --script)
             PRJ_SCRIPT=$2
             shift 2
-            SHIFT_COUNT=$(( $SHUFT_COUNT + 2 ))
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 2 ))
             ;;
         --sudo)
             case "$2" in
@@ -156,7 +156,7 @@ get_common_options() {
                 exit 2
             esac
             shift 2
-            SHIFT_COUNT=$(( $SHUFT_COUNT + 2 ))
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 2 ))
             ;;
         --*)
             echo unknown option "$1"

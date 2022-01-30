@@ -481,17 +481,18 @@ get_aws_options() {
         --distro)
             DISTRO=$2
             shift 2
-            SHIFT_COUNT=$(( $SHUFT_COUNT + 2 ))
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 2 ))
             ;;
         --inst)
             AWS_INSTANCE_TYPE=$2
             shift 2
-            SHIFT_COUNT=$(( $SHUFT_COUNT + 2 ))
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 2 ))
             ;;
         --os-disk)
             OS_DISK_SIZE=$2
             shift 2
-            SHIFT_COUNT=$(( $SHUFT_COUNT + 2 ))
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 2 ))
+            ;;
             ;;
         --*)
             echo unknown option "$1"
