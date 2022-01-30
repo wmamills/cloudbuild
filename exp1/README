@@ -15,7 +15,7 @@ Right now the test build is:
         * x86 host gcc is also 7.4.0 but I doubt its the Linaro code base
 
 Example:
-$ ./run-tests -u -d kvm-x86 build allnoconfig 8 6 4 2 1 defconfig 8 6 4 2 1
+$ ./run-tests -u -d kvm-x86-x8 build allnoconfig 8 6 4 2 1 defconfig 8 6 4 2 1
 
 Creates the kvm-x86 VM (-u and name)
 
