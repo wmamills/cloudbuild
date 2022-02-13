@@ -2,7 +2,12 @@
 # dockit: utility to make containers for normal development easy
 # This is an early prototype
 
-set -xe
+set -e
+
+if [ "$1" = "-d" ]; then
+    set -x
+    shift
+fi
 
 MOUNTDIR=/prj
 SCRIPT_NAME=$(basename $0)
