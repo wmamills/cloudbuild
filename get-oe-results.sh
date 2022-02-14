@@ -1,6 +1,12 @@
 #!/bin/bash
 
-#set -xe
+set -e
+
+if [ "$1" = "-d" ]; then
+    set -x
+    shift
+fi
+
 
 SCRIPT=$(basename $0)
 SCRIPT_PATH=$0
