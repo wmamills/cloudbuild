@@ -284,6 +284,7 @@ aws_get_distro_info() {
     DEBIAN_OWNER=136693071363
     FEDORA_OWNER=125523088429
     CENTOS_OWNER=$FEDORA_OWNER
+    WINDOWS_OWNER=801119661308
 
     case $DISTRO in
     ubuntu-20.04)
@@ -365,6 +366,11 @@ aws_get_distro_info() {
             REST="-Rawhide"
         fi
         IMAGE_NAME="Fedora-Cloud-Base${REST}"
+        ;;
+    windows-2022)
+        ROOT_USER=Administrator
+        OWNER=$WINDOWS_OWNER
+        IMAGE_NAME="Windows_Server-2022-English-Full-Base-"
         ;;
     *)
         abort Unknown distro $DISTRO
@@ -538,6 +544,7 @@ help() {
     echo "  centos-stream-8 centos-stream-*"
     echo "  fedora-coreos*"
     echo "  fedora-* (34 35 etc or rawhide)"
+    echo "  windows-2022"
     echo ""
     echo "example:"
     echo "  $ AWS my-server run --distro ubuntu-20.04 --inst t3.small --os-disk 10"
