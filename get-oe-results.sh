@@ -10,7 +10,9 @@ fi
 
 SCRIPT=$(basename $0)
 SCRIPT_PATH=$0
-REMOTE_PATH=${2:-job/build}
+REMOTE=$1
+REMOTE_PATH=$2
+ACTION=$3
 REMOTE_SCRIPT_PATH=tmp-bin
 ALL="conf build-log deploy task-logs sstate downloads"
 
@@ -86,9 +88,26 @@ get_output() {
     done
 }
 
-case "$1" in
+
+usage() {
+    echo "usage:"
+    echo "    $0 remote remote_path action [part part part ...]"
+    echo "where:"
+    echo "    remote is any ssh remote like ubuntu@192.168.56.2"
+    echo "    remote_path is the path to the build dir"
+    echo "action is:"
+    echo "    rsync         rsync files in parts to local machine"
+    echo "    get-tar       get tar archives of parts to local machine"
+    echo "    sum           calculate sha256 sum of all files in parts"
+    echo "    cache         update remote cache"
+    echo "    cache-public  update global cache"
+    echo "    cache-local   update local cache"
+    exit 3
+}
+
+case "$REMOTE" in
 "")
-    echo "Must Supply at least a remote, such as ubuntu@192.168.42.106"
+    usage
     exit 3
     ;;
 on-remote)
