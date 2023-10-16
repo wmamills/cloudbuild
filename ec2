@@ -20,7 +20,7 @@ MOUNTDIR=/prj
 SCRIPT_NAME=$(basename $0)
 SCRIPT_FULL_PATH=$(readlink -f $0)
 SCRIPT_DIR=$(dirname $SCRIPT_FULL_PATH)
-ALL_MODE=false
+ALL_MODE=none
 
 source $SCRIPT_DIR/common.sh
 
@@ -403,17 +403,32 @@ aws_get_ami() {
 aws_image() {
     aws_get_arch
     aws_get_distro_info
+    OWNER_OPT="--owner $OWNER"
 
-    if $ALL_MODE; then
+    case $ALL_MODE in
+    "image")
+        PAGER="cat"
+        ;;
+    "owner")
         PAGER="cat"
         IMAGE_NAME=""
-    else
+        ;;
+    "everything")
+        PAGER="cat"
+        IMAGE_NAME=""
+        OWNER_OPT=""
+        ;;
+    "none")
         PAGER="head -n 1"
-    fi
+        ;;
+    *)
+        abort "Unknown ALL_MODE=$ALL_MODE"
+        ;;
+    esac
 
     # find images that meet the creteria and sort them and take the "newest"
     aws ec2 describe-images \
-        --owner $OWNER \
+        $OWNER_OPT \
         --filter Name=architecture,Values=$EC2_ARCH \
             "Name=name,Values=${IMAGE_NAME}*" \
         --query 'Images[*].[ImageId,Name]' \
@@ -511,7 +526,10 @@ help() {
     echo "--os-disk num     size in GB of root disk"
     echo ""
     echo "options for image:"
-    echo "--all             list all images from the distro owner"
+    echo "--all             list all images matching name & owner"
+    echo "--all-owner       list all images matching distro owner"
+    echo "--all-all         list all images in region (slow)"
+    echo "--distro & --inst as above"
     echo ""
     echo "supported distros are:"
     echo "  ubuntu-20.04 ubuntu-18.04 ubuntu*"
@@ -545,7 +563,17 @@ get_aws_options() {
             SHIFT_COUNT=$(( $SHIFT_COUNT + 2 ))
             ;;
         --all)
-            ALL_MODE=true
+            ALL_MODE=image
+            shift 1
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 1 ))
+            ;;
+        --all-owner)
+            ALL_MODE=owner
+            shift 1
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 1 ))
+            ;;
+        --all-all)
+            ALL_MODE=everything
             shift 1
             SHIFT_COUNT=$(( $SHIFT_COUNT + 1 ))
             ;;
