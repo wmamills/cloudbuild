@@ -259,23 +259,25 @@ aws_stop() {
 # aws ec2 describe-instance-types --query 'InstanceTypes[*].[InstanceType,ProcessorInfo.SupportedArchitectures[0],VCpuInfo.DefaultVCpus,MemoryInfo.SizeInMiB]' --output text
 
 aws_get_arch() {
-    EC2_ARCH=$(aws ec2 describe-instance-types \
+    ALL_ARCH=$(aws ec2 describe-instance-types \
         --instance-types $EC2_INSTANCE_TYPE \
-        --query 'InstanceTypes[*].[ProcessorInfo.SupportedArchitectures[0]]' \
+        --query 'InstanceTypes[*].[ProcessorInfo.SupportedArchitectures]' \
         --output text)
-    case $EC2_ARCH in
-    x86_64)
-        DEB_ARCH=amd64
-        RH_ARCH=x86_64
-        ;;
-    arm64)
-        DEB_ARCH=arm64
-        RH_ARCH=aarch64
-        ;;
-    *)
-        abort unknow CPU archetecture $EC2_ARCH
-        ;;
-    esac
+    for EC2_ARCH in $ALL_ARCH; do
+        case $EC2_ARCH in
+        x86_64)
+            DEB_ARCH=amd64
+            RH_ARCH=x86_64
+            return
+            ;;
+        arm64)
+            DEB_ARCH=arm64
+            RH_ARCH=aarch64
+            return
+            ;;
+        esac
+    done
+    abort "No supported arch in ALL_ARCH=$ALL_ARCH"
 }
 
 aws_get_distro_info() {
