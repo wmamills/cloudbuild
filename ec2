@@ -141,7 +141,7 @@ aws_get_ip() {
 get_old_ip() {
     # forget any old IP address from known ssh keys
     if [ -r $SSH_CONFIGD_FILE ]; then
-        OLD_IP=$(cat $SSH_CONFIGD_FILE | grep Hostname | awk -e '{ print $2 }')
+        OLD_IP=$(cat $SSH_CONFIGD_FILE | grep Hostname | awk -e '{ print $2 }' | head -n 1)
     else
         OLD_IP=none
     fi
@@ -157,6 +157,13 @@ forget_old_ip() {
 
 # write the ssh config.d entry
 update_ssh_configd() {
+    # does the file already exist?
+    if [ -r $SSH_CONFIGD_FILE ]; then
+        # yes, then just update the IP
+        sed -i -e "s/Hostname .*/Hostname $NEW_IP/" $SSH_CONFIGD_FILE
+        return
+    fi
+
     cat >$SSH_CONFIGD_FILE <<EOF
 Host $EC2_NAME
     Hostname $NEW_IP
