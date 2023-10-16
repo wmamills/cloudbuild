@@ -282,8 +282,8 @@ aws_get_distro_info() {
     UBUNTU_OWNER=099720109477
     DEBIAN_DAILY_OWNER=903794441882
     DEBIAN_OWNER=136693071363
-    CENTOS_OWNER=125523088429
     FEDORA_OWNER=125523088429
+    CENTOS_OWNER=$FEDORA_OWNER
 
     case $DISTRO in
     ubuntu-20.04)
@@ -380,7 +380,7 @@ aws_get_ami() {
         --owner $OWNER \
         --filter Name=architecture,Values=$EC2_ARCH \
             "Name=name,Values=${IMAGE_NAME}*" \
-        --query 'Images[*].[ImageId,Name]' \
+        --query 'Images[*].[ImageId,CreationDate,Name]' \
         --output text | sort -r --key 2 | head -n 1)
     AMI=$(echo $AMI_NAME | awk -e '{print $1}' )
     if [[ $AMI =~ ^ami-[0-9a-f]*$ ]]; then
@@ -431,7 +431,7 @@ aws_image() {
         $OWNER_OPT \
         --filter Name=architecture,Values=$EC2_ARCH \
             "Name=name,Values=${IMAGE_NAME}*" \
-        --query 'Images[*].[ImageId,Name]' \
+        --query 'Images[*].[ImageId,CreationDate,Name]' \
         --output text | sort -r --key 2 | $PAGER
 }
 
