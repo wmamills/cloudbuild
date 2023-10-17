@@ -58,6 +58,7 @@ set_defaults() {
     : ${SSH_CONFIGD_OPTIONS:=    ForwardAgent yes}
     : ${EC2_SEC_GROUPS:=ssh web}
     : ${EC2_KEYPAIR_NAME:=default}
+    : ${EC2_PRIVATE_KEY:=~/.ssh/id_rsa}
 }
 
 local_config() {
@@ -280,6 +281,22 @@ aws_get_arch() {
     abort "No supported arch in ALL_ARCH=$ALL_ARCH"
 }
 
+aws_get_password() {
+    aws_get_instance_id || abort "No instance named $EC2_NAME found"
+    CRYPT_TEXT=$(aws ec2 get-password-data --instance-id $EC2_INSTANCE \
+        --query "PasswordData" --output text)
+
+    echo "EC2_PRIVATE_KEY=$EC2_PRIVATE_KEY"
+
+    printf "$CRYPT_TEXT" | base64 --decode | \
+        openssl pkeyutl -decrypt -inkey $EC2_PRIVATE_KEY; echo
+
+    # Print IP addr, if it has one
+    if aws_get_ip; then
+        echo "IPv4: $NEW_IP"
+    fi
+}
+
 aws_get_distro_info() {
     UBUNTU_OWNER=099720109477
     DEBIAN_DAILY_OWNER=903794441882
@@ -497,6 +514,9 @@ aws_status() {
 is_action() {
     case "$1" in
     run|stop|destroy|start|create|test_basic|test_lc|status|get-console|image)
+        return 0
+        ;;
+    get_password)
         return 0
         ;;
     *)
