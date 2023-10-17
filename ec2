@@ -56,7 +56,7 @@ set_defaults() {
     : ${EC2_USERNAME:=ubuntu}
     : ${SSH_CONFIGD_NUM:=50}
     : ${SSH_CONFIGD_OPTIONS:=    ForwardAgent yes}
-    : ${EC2_SEC_GROUPS:=ssh web}
+    : ${EC2_SEC_GROUPS:=ssh web rdp}
     : ${EC2_KEYPAIR_NAME:=default}
     : ${EC2_PRIVATE_KEY:=~/.ssh/id_rsa}
 }
