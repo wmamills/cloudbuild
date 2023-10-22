@@ -52,6 +52,25 @@ mktemp() {
     cp $SCRIPT_FULL_PATH $SCRIPT_DIR/common.sh $TMPDIR
 }
 
+local_config() {
+    # allow user to override default settings
+    # normally settings should use
+    #   : ${VAR:=value}
+    # in which case the first one processed wins
+    # ENV vars, project local, the project checked in, the global user
+    # use of
+    #   VAR=value
+    # means an override, last one processed wins
+    # High to low: global user, project checked in, project local, env vars
+    for d in .prjinfo/local .prjinfo  ~/.prjinfo ; do
+        if [ -r $d/setenv ]; then
+            . $d/setenv
+        fi
+    done
+
+    set_defaults
+}
+
 get_distro_type() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
