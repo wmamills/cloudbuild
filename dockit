@@ -63,9 +63,6 @@ set_defaults() {
 }
 
 top_level() {
-    get_common_options "$@"
-    shift $SHIFT_COUNT
-
     export DISTRO
     export PRJ_SCRIPT
     add_local_gitignore
@@ -79,7 +76,7 @@ top_level() {
 }
 
 mktemp() {
-    local DISTRO_NAME=${DISTRO//:/-}     # replace colons with dash
+    local DISTRO_NAME=${DOCKIT_DISTRO//:/-}     # replace colons with dash
 
     TMPDIR=.prjinfo/local/${MY_SCRIPT_NAME}-${DISTRO_NAME}
     mkdir -p $TMPDIR
@@ -94,7 +91,7 @@ mktemp() {
     TMP1=$(cd . ; dirs +0)  # get project name with ~ for HOME
     TMP1=${TMP1//\~/H}       # replace tidle with 'H'
     TMP1=${TMP1//\//_}      # replace all slashes with underscores
-    CONTAINER_NAME=prj_${TMP1}__${DISTRO_NAME}
+    CONTAINER_NAME=dockit_${TMP1}__${DISTRO_NAME}
     echo $CONTAINER_NAME                    >$TMPDIR/name
 
     cp $MY_SCRIPT_FULL_PATH $MY_SCRIPT_DIR/common.sh $TMPDIR
@@ -169,11 +166,93 @@ help() {
     echo "  $ dockit --temp-ok --mr-clean --branch origin/main build"
 }
 
+get_dockit_options() {
+    SHIFT_COUNT=0
+    while true; do
+        case "$1" in
+        --distro)
+            DOCKIT_DISTRO=$2
+            shift 2
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 2 ))
+            ;;
+        --script)
+            DOCKIT_PRJ_SCRIPT=$2
+            shift 2
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 2 ))
+            ;;
+        --branch)
+            DOCKIT_BRANCH=$2
+            shift 2
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 2 ))
+            ;;
+        --top-dir)
+            DOCKIT_TOP_DIR=$2
+            shift 2
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 2 ))
+            ;;
+        --rebuild)
+            DOCKIT_REBUILD=true
+            shift 1
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 1 ))
+            ;;
+        --generic)
+            DOCKIT_GENERIC=true
+            shift 1
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 1 ))
+            ;;
+        --isolate)
+            DOCKIT_ISOLATE=true
+            shift 1
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 1 ))
+            ;;
+        --read-only)
+            DOCKIT_READ_ONLY=true
+            shift 1
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 1 ))
+            ;;
+        --temp)
+            DOCKIT_TEMP=yes
+            shift 1
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 1 ))
+            ;;
+        --temp-ok)
+            DOCKIT_TEMP=ok
+            shift 1
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 1 ))
+            ;;
+        --older-than)
+            DOCKIT_OLDER_THAN=$2
+            shift 1
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 2 ))
+            ;;
+        --global)
+            DOCKIT_PURGE_GLOBAL=true
+            shift 1
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 1 ))
+            ;;
+        --debug)
+            DOCKIT_DEBUG=yes
+            shift 1
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 1 ))
+            check_debug
+            ;;
+        --*)
+            echo unknown option "$1"
+            exit 2
+            ;;
+        *)
+            return
+            ;;
+        esac
+    done
+}
+
 case "$1" in
 --std-flow)
     std_flow "$@"
     ;;
 *)
+    get_dockit_options "$@"; shift $SHIFT_COUNT
     top_level "$@"
     ;;
 esac
