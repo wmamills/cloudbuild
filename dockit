@@ -85,6 +85,48 @@ std_flow() {
     exit
 }
 
+help() {
+    echo "usage: dockit [dockit options] <command> [command options]"
+    echo "command is one of:"
+    echo "build     do the default build command in the container"
+    echo "shell     get a shell in the container"
+    echo "cmd       do an arbitrary command in the container"
+    echo "icmd      do an arbitrary interactive command in the container"
+    echo "purge     delete all containers for this project"
+    echo ""
+    echo "dockit options:"
+    echo "--branch          remote/branch"
+    echo "                  specify the remote and branch to build"
+    echo "                  default ./WORKTREE"
+    echo "--distro name     specify the distro"
+    echo "--script path     specify the project specific setup script"
+    echo "--rebuild         rebuild the container"
+    echo "--generic         don't personalize to the user"
+    echo "--isolate         don't mount project dir in container"
+    echo "--read-only       mount project dir in container as read-only"
+    echo "--top-dir dir     specify the top project dir"
+    echo "--mount           specify the mount point in the container of the"
+    echo "                  top project dir. Can be absolute or relative"
+    echo "                  to user's $HOME"
+    echo "--temp            delete the container after it has finished"
+    echo "--temp-ok         delete the container if the return code is ok"
+    echo "--mr-clean        --rebuild --generic --isolate"
+    echo ""
+    echo "options for purge"
+    echo "--older-than N    delete all containers that have not run in N days"
+    echo "--global          look at all dockit created containers"
+    echo ""
+    echo "default options will be loaded from"
+    echo "    .prj/local/dockit"
+    echo "    .prj/dockit"
+    echo "    ~/.prjtool/dockit"
+    echo ""
+    echo "example:"
+    echo "  $ dockit build"
+    echo "  $ dockit --distro fedora:rawhide build linux"
+    echo "  $ dockit --temp-ok --mr-clean --branch origin/main build"
+}
+
 case "$1" in
 --std-flow)
     std_flow "$@"
