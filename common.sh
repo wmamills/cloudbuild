@@ -30,28 +30,6 @@ add_local_gitignore() {
     fi
 }
 
-mktemp() {
-    local DISTRO_NAME=${DISTRO//:/-}     # replace colons with dash
-
-    TMPDIR=.prjinfo/local/${SCRIPT_NAME}-${DISTRO_NAME}
-    mkdir -p $TMPDIR
-    TMPFILE=$TMPDIR/vars
-
-    echo export MY_USER=$(whoami)            >$TMPFILE
-    echo export MY_UID=$(id -u)             >>$TMPFILE
-    echo export MY_GID=$(id -g)             >>$TMPFILE
-    echo export OPT_SUDO=$OPT_SUDO          >>$TMPFILE
-    echo export PRJ_SCRIPT=${PRJ_SCRIPT}    >>$TMPFILE
-
-    TMP1=$(cd . ; dirs +0)  # get project name with ~ for HOME
-    TMP1=${TMP1//\~/H}       # replace tidle with 'H'
-    TMP1=${TMP1//\//_}      # replace all slashes with underscores
-    CONTAINER_NAME=prj_${TMP1}__${DISTRO_NAME}
-    echo $CONTAINER_NAME                    >$TMPDIR/name
-
-    cp $SCRIPT_FULL_PATH $SCRIPT_DIR/common.sh $TMPDIR
-}
-
 local_config() {
     # allow user to override default settings
     # normally settings should use
