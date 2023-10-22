@@ -537,7 +537,7 @@ is_default_server_name() {
 }
 
 help() {
-    echo "usage: AWS [server-name] run|stop|destroy|start"
+    echo "usage: ec2 [server-name] run|stop|destroy|start"
     echo "run       create or start the machine"
     echo "stop      stop but don't destroy the machine"
     echo "destroy   terminate the instance and destroy disk data"
@@ -569,7 +569,8 @@ help() {
     echo "  windows-2022"
     echo ""
     echo "example:"
-    echo "  $ AWS my-server run --distro ubuntu-20.04 --inst t3.small --os-disk 10"
+    echo "  $ ec2 my-server run --distro ubuntu-20.04 --inst t3.small --os-disk 10"
+    echo "  $ ssh my-server"
 }
 
 get_aws_options() {
