@@ -62,7 +62,7 @@ set_defaults() {
     : ${OPT_SUDO:=yes}
 }
 
-top_level() {
+do_top_level() {
     export DISTRO
     export PRJ_SCRIPT
     add_local_gitignore
@@ -122,6 +122,17 @@ std_flow() {
         sudo -iu $MY_USER
     fi
     exit
+}
+
+is_action() {
+    case "$1" in
+    build|shell|cmd|icmd|purge)
+        return 0
+        ;;
+    *)
+        return 1
+        ;;
+    esac
 }
 
 help() {
@@ -247,12 +258,41 @@ get_dockit_options() {
     done
 }
 
+do_action() {
+    case $DOCKIT_ACTION in
+    # These commands are done on the host side
+    purge)
+        do_${DOCKIT_ACTION}
+        ;;
+
+    # all others are done in the container, get there first
+    # we already know the action is valid as it passed is_action
+    *)
+        do_top_level "$@"
+        ;;
+    esac
+}
+
+# main on host side
+main() {
+    get_dockit_options "$@"; shift $SHIFT_COUNT
+    if is_action $1; then
+        DOCKIT_ACTION=$1; shift
+        do_action "$@"
+    elif [ -z "$1" ]; then
+        help
+        exit 1
+    else
+        abort "Unknown command $1"
+    fi
+}
+
+# First off figure out if we are on the host or the container
 case "$1" in
 --std-flow)
     std_flow "$@"
     ;;
 *)
-    get_dockit_options "$@"; shift $SHIFT_COUNT
-    top_level "$@"
+    main "$@"
     ;;
 esac
