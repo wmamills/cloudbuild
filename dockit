@@ -2,12 +2,16 @@
 # dockit: utility to make containers for normal development easy
 # This is an early prototype
 
+# stop on any uncaught error
 set -e
 
-if [ "$1" = "-d" ]; then
-    set -x
-    shift
-fi
+check_debug() {
+    if [ -n "${DOCKIT_DEBUG}" ]; then
+        set -x
+    fi
+}
+
+check_debug
 
 MOUNTDIR=/prj
 SCRIPT_NAME=$(basename $0)
