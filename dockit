@@ -13,10 +13,10 @@ check_debug() {
 
 check_debug
 
-MOUNTDIR=/prj
-SCRIPT_NAME=$(basename $0)
-SCRIPT_FULL_PATH=$(readlink -f $0)
-SCRIPT_DIR=$(dirname $SCRIPT_FULL_PATH)
+# DOCKIT script path, works for both sides
+MY_SCRIPT_NAME=$(basename $0)
+MY_SCRIPT_FULL_PATH=$(readlink -f $0)
+MY_SCRIPT_DIR=$(dirname $MY_SCRIPT_FULL_PATH)
 
 # Names of vars to be transported to the other side
 SAVE_VARS="
@@ -38,7 +38,7 @@ MY_GID
 OPT_SUDO
 "
 
-source $SCRIPT_DIR/common.sh
+source $MY_SCRIPT_DIR/common.sh
 
 # These are the lowest priority defaults
 set_defaults() {
@@ -73,15 +73,15 @@ top_level() {
     local_config
     mktemp
     docker run -it --rm \
-        -v "${PWD}:${MOUNTDIR}" $DISTRO \
-        ${MOUNTDIR}/$TMPDIR/$SCRIPT_NAME \
+        -v "${PWD}:${DOCKIT_MOUNTDIR}" $DISTRO \
+        ${MOUNTDIR}/$TMPDIR/$MY_SCRIPT_NAME \
         --std-flow "$@"
 }
 
 mktemp() {
     local DISTRO_NAME=${DISTRO//:/-}     # replace colons with dash
 
-    TMPDIR=.prjinfo/local/${SCRIPT_NAME}-${DISTRO_NAME}
+    TMPDIR=.prjinfo/local/${MY_SCRIPT_NAME}-${DISTRO_NAME}
     mkdir -p $TMPDIR
 
     # make vars file
@@ -97,7 +97,7 @@ mktemp() {
     CONTAINER_NAME=prj_${TMP1}__${DISTRO_NAME}
     echo $CONTAINER_NAME                    >$TMPDIR/name
 
-    cp $SCRIPT_FULL_PATH $SCRIPT_DIR/common.sh $TMPDIR
+    cp $MY_SCRIPT_FULL_PATH $MY_SCRIPT_DIR/common.sh $TMPDIR
 }
 
 std_flow() {
