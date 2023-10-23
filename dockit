@@ -62,19 +62,6 @@ set_defaults() {
     : ${OPT_SUDO:=yes}
 }
 
-do_top_level() {
-    export DISTRO
-    export PRJ_SCRIPT
-    add_local_gitignore
-    #find_container
-    local_config
-    mktemp
-    docker run -it --rm \
-        -v "${PWD}:${DOCKIT_MOUNTDIR}" $DISTRO \
-        ${MOUNTDIR}/$TMPDIR/$MY_SCRIPT_NAME \
-        --std-flow "$@"
-}
-
 mktemp() {
     local DISTRO_NAME=${DOCKIT_DISTRO//:/-}     # replace colons with dash
 
@@ -141,6 +128,70 @@ run_interactive() {
         $CONTAINER_NAME $@
     STATUS=$?
     docker stop -t 0 $CONTAINER_NAME
+}
+
+do_top_level() {
+    export DISTRO
+    export PRJ_SCRIPT
+    add_local_gitignore
+    local_config
+    mktemp
+
+    if container_exists && $DOCKIT_REBUILD; then
+        delete_container
+    fi
+
+    if ! container_exists; then
+        rm -rf $TMPDIR/setup_done || true
+
+        echo -n "Creating container ..."
+        docker create \
+        -v "${PWD}:${DOCKIT_MOUNTDIR}" \
+        --name $CONTAINER_NAME \
+        --label dockit \
+        $DOCKIT_DISTRO \
+        /dockit_exec.sh
+    fi
+
+    # do the setup
+    if [ ! -f $TMPDIR/setup_done ]; then
+        run_batch --internal-in-container-setup "$@"
+        if [ $? -eq 0 ]; then
+            touch $TMPDIR/setup_done
+        else
+            echo "Setup failed"
+            exit 1
+        fi
+    fi
+
+    case "$DOCKIT_ACTION" in
+    shell)
+        run_interactive /bin/bash "$@"
+        STATUS=$?
+        ;;
+    icmd)
+        run_interactive "$@"
+        STATUS=$?
+        ;;
+    *)
+        run_batch --internal-in-container-action "$@"
+        STATUS=$?
+        ;;
+    esac
+
+    case $DOCKIT_TEMP in
+    "ok")
+        if [ $STATUS -eq 0 ]; then
+            delete_container
+        fi
+        ;;
+    "yes")
+        delete_container
+        ;;
+    "no")
+        true
+        ;;
+    esac
 }
 
 std_flow() {
@@ -412,8 +463,13 @@ main() {
 
 # First off figure out if we are on the host or the container
 case "$1" in
---std-flow)
-    std_flow "$@"
+--internal-in-container-setup)
+    shift
+    in_container_setup "$@"
+    ;;
+--internal-in-container-action)
+    shift
+    in_container_action "$@"
     ;;
 *)
     main "$@"
