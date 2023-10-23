@@ -4,35 +4,50 @@ dockit:
 x put junk files in ./prjinfo/local/tmp
 x add ./prjinfo/local to .git/.gitignore
 x per distro tmpdir
-* find setup file
-* persist container (per distro, last)
-* sub-commands
-    * build
-    * test
-    * debug
-    * shell
-    * admin-shell
-    * set default options
-    * add pkg/pip/npm to config
+x persist container (per distro)
+x sub-commands
+    x build
+    x cmd
+    x shell
+    x icmd
+    x purge
 * options
     x distro
-    x setup file
-    * user personalization or not
-        * generic user or match calling user
-    * prj volume
-        container path /prj or actual full path
-        bind dir to /prj or copy somehow
-    * "make" target
-    * sudo priv or not
-    * rebuild container or not
-    * use local config or not
+    x rebuild
+    x purge global
+    x purge older than
+    x temp
+    x temp-ok
+    * branch
+    * script
+    * isolate
+    * generic
+    * read-only
+    * top (dir)
+    * mount (dir)
 * processing
-    * get default options
-    * make distro setup run just once
-    * make prj setup run just once
+    * REFIX SUDO for user
+        lost in transition to direct call of exec -u
+        Need to go through root again?
+        Maybe:
+        setpriv --reuid=1000 --regid=1000 --init-groups --reset-env /bin/bash
+    x get default options
+    x make distro setup run just once
+    x make prj setup run just once
+    * find prj_script file
+    * find (default) top dir
+    * handle relative mount dirs (users home dir)
+    * use top dir name as mount dir name by default
+    * allow user to set shorter project name rather than H_w_proj etc
+    * remove existing users that conflict (for ubuntu:23.04 etc)
     * import env settings before "make" command
 * distro setup
     * set hostname
-    * setup timezone
+    * setup timezone (UTC or match user)
     * setup LANG/locale
-    * cd to prj dir w/o setup script (and w/o extra shell level?)
+    x cd to prj dir w/o setup script (but may need to redo)
+
+Key:
+* TODO
+x Done
+
