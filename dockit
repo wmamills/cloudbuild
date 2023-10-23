@@ -170,6 +170,83 @@ std_flow() {
     exit
 }
 
+default_build() {
+    for f in build build.sh build.py; do
+        if [ -x $f ]; then
+            ./$f "$@"
+            return $?
+        fi
+    done
+
+    if [ -f CMakeLists.txt ]; then
+        cmake -Bbuild . "$@"
+    elif [ -f Makefile ]; then
+        make "$@"
+    fi
+}
+
+default_actions() {
+    case $DOCKIT_ACTION in
+    build)
+        default_build "$@"
+        ;;
+    cmd|icmd)
+        "$@"
+        ;;
+    *)
+        # internal error, it should have been caught earlier
+        echo "unknown command $DOCKIT_COMMAND"
+        exit 1
+        ;;
+    esac
+}
+
+default_setup() {
+    apt-get install -y build-essential git cmake
+}
+
+in_container_setup() {
+    CTRL_DIR=$(cd "$(dirname $0)"; pwd)
+    PRJ_DIR=$(cd $CTRL_DIR/../../..; pwd)
+
+    cd ${PRJ_DIR}
+
+    # read vars from TEMPFILE
+    source $CTRL_DIR/vars
+    check_debug
+
+    # do common admin setup of the container
+    setup_distro
+
+    if [ -f "./${PRJ_SCRIPT}" ]; then
+        # now execute the command the user specified (or project specific setup)
+        ./${PRJ_SCRIPT} admin_setup "$@"
+
+        # project specific setup in user context
+        su $MY_USER ./${PRJ_SCRIPT} prj_setup "$@"
+    else
+        default_setup
+    fi
+}
+
+in_container_action() {
+    CTRL_DIR=$(cd "$(dirname $0)"; pwd)
+    PRJ_DIR=$(cd $CTRL_DIR/../../..; pwd)
+
+    cd ${PRJ_DIR}
+
+    # read vars from TEMPFILE
+    source $CTRL_DIR/vars
+    check_debug
+
+    if [ -f "./${PRJ_SCRIPT}" ]; then
+        # project specific build/run, again in user context
+        ./${PRJ_SCRIPT} prj_build "$@"
+    else
+        default_actions "$@"
+    fi
+}
+
 is_action() {
     case "$1" in
     build|shell|cmd|icmd|purge)
