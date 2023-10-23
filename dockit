@@ -194,33 +194,6 @@ do_top_level() {
     esac
 }
 
-std_flow() {
-    CTRL_DIR=$(cd "$(dirname $0)"; pwd)
-    PRJ_DIR=$(cd $CTRL_DIR/../../..; pwd)
-
-    cd ${PRJ_DIR}
-
-    # read vars from TEMPFILE
-    source $CTRL_DIR/vars
-
-    # do common admin setup of the container
-    setup_distro
-
-    if [ -f "./${PRJ_SCRIPT}" ]; then
-        # now execute the command the user specified (or project specific setup)
-        ./${PRJ_SCRIPT} admin_setup
-
-        # project specific setup in user context
-        su $MY_USER ./${PRJ_SCRIPT} prj_setup
-
-        # project specific build/run, again in user context
-        su $MY_USER ./${PRJ_SCRIPT} prj_build
-    else
-        sudo -iu $MY_USER
-    fi
-    exit
-}
-
 default_build() {
     for f in build build.sh build.py; do
         if [ -x $f ]; then
