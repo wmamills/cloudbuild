@@ -405,6 +405,30 @@ get_dockit_options() {
     done
 }
 
+do_purge() {
+    local_config
+
+    if $DOCKIT_PURGE_GLOBAL; then
+        if [ -n "$DOCKIT_OLDER_THAN" ]; then
+            UNTIL="$(( $DOCKIT_OLDER_THAN * 24 ))h"
+        else
+            UNTIL="10s"
+        fi
+        docker container prune -f \
+            --filter "until=$UNTIL" \
+            --filter "label=dockit"
+    else
+        for i in .prjinfo/local/${MY_SCRIPT_NAME}-*; do
+            if [ -d $i -a -r $i/name ]; then
+                CONTAINER_NAME=$(cat $i/name)
+                if delete_container; then
+                    rm -rf $i
+                fi
+            fi
+        done
+    fi
+}
+
 do_action() {
     case $DOCKIT_ACTION in
     # These commands are done on the host side
