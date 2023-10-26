@@ -195,18 +195,26 @@ do_top_level() {
 }
 
 default_build() {
+    echo "Using default build function"
     for f in build build.sh build.py; do
         if [ -x $f ]; then
+        echo "Found build script ./$f"
             ./$f "$@"
             return $?
         fi
     done
 
     if [ -f CMakeLists.txt ]; then
+        echo "Found CMakeLists.txt"
         cmake -Bbuild . "$@"
+        return $?
     elif [ -f Makefile ]; then
+        echo "Found Makefile"
         make "$@"
+        return $?
     fi
+
+    echo "default_build: can't find an obvious build system"
 }
 
 default_actions() {
@@ -226,6 +234,7 @@ default_actions() {
 }
 
 default_setup() {
+    echo "Using default setup function"
     apt-get install -y build-essential git cmake
 }
 
