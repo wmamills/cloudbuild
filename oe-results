@@ -45,6 +45,42 @@ set_tmp_dir() {
     fi
 }
 
+on_remote_get_tmp_dir() {
+    set_tmp_dir
+    echo "$OE_TMP_DIR"
+}
+
+on_remote_prep_rsync() {
+    set_tmp_dir
+    echo "OE_TMP_DIR=$OE_TMP_DIR"
+
+    while [ -n "$1" ]; do
+        case "$1" in
+        deploy|conf|downloads|sstate)
+            # nothing to do in these cases
+            true
+            ;;
+        build-logs)
+            echo "making build-logs dir"
+            make_build_logs
+            ;;
+        task-logs)
+            echo "making task-logs dir"
+            make_task_logs
+            ;;
+        all)
+            on_remote_prep_rsync $ALL
+            ;;
+        most)
+            on_remote_prep_rsync $MOST
+            ;;
+        *)
+            echo "Unknown part $1, skipping"
+        esac
+        shift
+    done
+}
+
 on_remote_make_tar() {
     set_tmp_dir
     echo "OE_TMP_DIR=$OE_TMP_DIR"
@@ -119,6 +155,43 @@ get_output() {
     done
 }
 
+rsync_output() {
+    while [ -n "$1" ]; do
+        case "$1" in
+        conf|build-logs|task-logs)
+            echo "rsync $1"
+            rsync -a --stats --progress $REMOTE:$REMOTE_PATH/$1 .
+            ;;
+        downloads)
+            echo "rsync $1"
+            rsync -a --stats --progress --exclude="*.done" --exclude="git2" \
+                $REMOTE:$REMOTE_PATH/$1 .
+            ;;
+        downloads-git2)
+            echo "rsync $1"
+            rsync -a --stats --progress \
+                $REMOTE:$REMOTE_PATH/downloads/git2 downloads/git2
+            ;;
+        sstate)
+            echo "rsync $1"
+            rsync -a --stats --progress $REMOTE:$REMOTE_PATH/sstate-cache .
+            ;;
+        deploy)
+            echo "rsync $1"
+            rsync -a --stats --progress $REMOTE:$REMOTE_PATH/$OE_TMP_DIR/$1 .
+            ;;
+        all)
+            rsync_output $ALL
+            ;;
+        most)
+            rsync_output $MOST
+            ;;
+        *)
+            echo "Unknown part $1, skipping"
+        esac
+        shift
+    done
+}
 
 usage() {
     echo "usage:"
@@ -128,7 +201,7 @@ usage() {
     echo "    remote_path is the path to the build dir"
     echo "    -d enables bash debug tracing at host and remote"
     echo "action is:"
-#    echo "    rsync             rsync files in parts to local machine"
+    echo "    rsync             rsync files in parts to local machine"
     echo "    get-tar           get tar archives of parts to local machine"
 #    echo "    sum               calculate sha256 sum of all files in parts"
 #    echo "    cache             update remote cache"
@@ -168,7 +241,7 @@ on-remote)
     shift; shift; shift || true
     cd $REMOTE_PATH
     case $ACTION in
-    make_tar)
+    prep_rsync|make_tar|get_tmp_dir)
         on_remote_$ACTION "$@"
         ;;
     *)
@@ -196,6 +269,16 @@ on-remote)
         fi
 
         get_output $PARTS
+        ;;
+    rsync)
+        if ! remote-action prep_rsync "$PARTS"; then
+            rc=$?
+            echo "remote prep of dirs failed"
+            exit $rc
+        fi
+        OE_TMP_DIR=$(remote-action get_tmp_dir)
+
+        rsync_output $PARTS
         ;;
     *)
         echo "unhandled action $ACTION"
