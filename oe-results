@@ -14,7 +14,7 @@ REMOTE=$1
 REMOTE_PATH=$2
 ACTION=$3
 REMOTE_SCRIPT_PATH=tmp-bin
-ALL="conf build-log deploy task-logs sstate downloads"
+ALL="conf build-logs deploy task-logs sstate downloads"
 
 first_word() {
     echo "$1"
