@@ -182,11 +182,11 @@ do_top_level() {
 
     case "$DOCKIT_ACTION" in
     shell)
-        run_interactive /bin/bash "$@"
+        run_interactive --internal-userjmp /bin/bash "$@"
         STATUS=$?
         ;;
     icmd)
-        run_interactive "$@"
+        run_interactive --internal-userjmp "$@"
         STATUS=$?
         ;;
     *)
@@ -254,6 +254,11 @@ default_setup() {
     apt-get install -y build-essential git cmake
 }
 
+userjmp() {
+    # su man page suggests I do this:
+    setpriv --reuid=$MY_UID --regid=$MY_GID --init-groups --reset-env "$@"
+}
+
 in_container_preamble() {
     CTRL_DIR=$(cd "$(dirname $0)"; pwd)
     PRJ_DIR=$(cd $CTRL_DIR/../../..; pwd)
@@ -292,6 +297,14 @@ in_container_action() {
     else
         default_actions "$@"
     fi
+    exit $?
+}
+
+# we start as root and need to jump to the user priv and command
+in_container_userjmp() {
+    in_container_preamble
+
+    userjmp "$@"
     exit $?
 }
 
@@ -491,6 +504,10 @@ case "$1" in
 --internal-in-container-action)
     shift
     in_container_action "$@"
+    ;;
+--internal-userjmp)
+    shift
+    in_container_userjmp "$@"
     ;;
 *)
     main "$@"
