@@ -43,7 +43,7 @@ set_tmp_dir() {
     fi
 }
 
-make_output() {
+on_remote_make_tar() {
     set_tmp_dir
     echo "OE_TMP_DIR=$OE_TMP_DIR"
 
@@ -76,7 +76,10 @@ make_output() {
             time tar caf sstate.tar sstate-cache/
             ;;
         all)
-            make_output $ALL
+            on_remote_make_tar $ALL
+            ;;
+        *)
+            echo "Unknown part $1, skipping"
         esac
         shift
     done
@@ -96,6 +99,9 @@ get_output() {
             ;;
         all)
             get_output $ALL
+            ;;
+        *)
+            echo "Unknown part $1, skipping"
         esac
         shift
     done
@@ -130,34 +136,55 @@ usage() {
     exit 3
 }
 
+remote-action() {
+    REMOTE_ACTION=$1; shift
+    ssh $REMOTE mkdir -p $REMOTE_SCRIPT_PATH
+    scp $SCRIPT_PATH $REMOTE:$REMOTE_SCRIPT_PATH/$SCRIPT
+    ssh $REMOTE $REMOTE_SCRIPT_PATH/$SCRIPT \
+        on-remote $REMOTE_PATH $REMOTE_ACTION "$@"
+}
+
 case "$REMOTE" in
 "")
     usage
     exit 3
     ;;
 on-remote)
-    shift; shift || true
+    shift; shift; shift || true
     cd $REMOTE_PATH
-    if [ -z "$1" ]; then
-        make_output all
-    else
-        make_output "$@"
-    fi
+    case $ACTION in
+    make_tar)
+        on_remote_$ACTION "$@"
+        ;;
+    *)
+        echo "Unhandled remote action $ACTION"
+        exit 2
+        ;;
+    esac
     ;;
 *)
-    REMOTE=$1; shift; shift || true
-    ssh $REMOTE mkdir -p $REMOTE_SCRIPT_PATH
-    scp $SCRIPT_PATH $REMOTE:$REMOTE_SCRIPT_PATH/$SCRIPT
-    if ! ssh $REMOTE $REMOTE_SCRIPT_PATH/$SCRIPT on-remote $REMOTE_PATH "$@"; then
-        rc=$?
-        echo "remote build of archives failed"
-        exit $rc
+    shift; shift; shift || true
+
+    # This pattern is common, handle it here
+    if [ -z "$1" ]; then
+        PARTS=all
+    else
+        PARTS="$@"
     fi
 
-    if [ -z "$1" ]; then
-        get_output all
-    else
-        get_output "$@"
-    fi
-    ;;
+    case $ACTION in
+    get-tar)
+        if ! remote-action make_tar "$PARTS"; then
+            rc=$?
+            echo "remote build of archives failed"
+            exit $rc
+        fi
+
+        get_output $PARTS
+        ;;
+    *)
+        echo "unhandled action $ACTION"
+        exit 2
+        ;;
+    esac
 esac
