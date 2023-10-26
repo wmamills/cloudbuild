@@ -20,12 +20,32 @@ first_word() {
     echo "$1"
 }
 
-make_output() {
+make_build_logs() {
+    rm -rf build-logs || true
+    mkdir -p build-logs/$OE_TMP_DIR
+    cp *.log build-logs/
+    cp -a $OE_TMP_DIR/log build-logs/$OE_TMP_DIR
+    cp -a $OE_TMP_DIR/buildstats build-logs/$OE_TMP_DIR
+}
+
+make_task_logs() {
+    rm -rf task-logs || true
+    mkdir -p task-logs/$OE_TMP_DIR
+    find $OE_TMP_DIR/work{,-shared} -type d -name temp | \
+        xargs -n 1 -i bash -c "mkdir -p task-logs/{}; cp -a {}/* task-logs/{}/"
+}
+
+set_tmp_dir() {
     OE_TMP_DIR=$(first_word tmp*)
     if [ -z "$OE_TMP_DIR" -o ! -d $OE_TMP_DIR ]; then
         echo "no OE tmp-* dir, did any build happen?"
         exit 99
     fi
+}
+
+make_output() {
+    set_tmp_dir
+    echo "OE_TMP_DIR=$OE_TMP_DIR"
 
     while [ -n "$1" ]; do
         case "$1" in
@@ -35,24 +55,17 @@ make_output() {
             ;;
         build-logs)
             echo "making build-logs archive"
-            rm -rf build-logs || true
-            mkdir -p build-logs/$OE_TMP_DIR
-            cp *.log build-logs/
-            cp -a $OE_TMP_DIR/log build-logs/$OE_TMP_DIR
-            cp -a $OE_TMP_DIR/buildstats build-logs/$OE_TMP_DIR
-            tar caf build-logs.tar.xz build-logs
+            make_build_logs
+            time tar caf build-logs.tar.xz build-logs
             ;;
         conf)
             echo "making conf archive"
-            tar caf conf.tar.gz conf/
+            time tar caf conf.tar.gz conf/
             ;;
         task-logs)
             echo "making task-logs archive"
-            rm -rf task-logs || true
-            mkdir -p task-logs/$OE_TMP_DIR
-            find $OE_TMP_DIR/work{,-shared} -type d -name temp | \
-                xargs -n 1 -i bash -c "mkdir -p task-logs/{}; cp -a {}/* task-logs/{}/"
-            tar caf task-logs.tar.xz task-logs
+            make_task_logs
+            time tar caf task-logs.tar.xz task-logs
             ;;
         downloads)
             echo "making downloads archive"
