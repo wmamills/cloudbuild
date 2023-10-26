@@ -72,7 +72,7 @@ mktemp() {
     TMPFILE=$TMPDIR/vars
     echo "#created automatically by dockit, do not edit" >$TMPFILE
     for v in $SAVE_VARS; do
-        echo export $v=${!v} >>$TMPFILE
+        echo "export $v=\"${!v}\"" >>$TMPFILE
     done
 
     TMP1=$(cd . ; dirs +0)  # get project name with ~ for HOME
