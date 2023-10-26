@@ -15,7 +15,7 @@ REMOTE=$1
 REMOTE_PATH=$2
 ACTION=$3
 REMOTE_SCRIPT_PATH=tmp-bin
-ALL="conf build-logs deploy task-logs sstate downloads"
+ALL="conf build-logs deploy task-logs sstate downloads downloads-git2"
 MOST="conf build-logs deploy task-logs"
 
 first_word() {
@@ -73,6 +73,10 @@ on_remote_make_tar() {
             echo "making downloads archive"
             time tar caf downloads.tar --exclude="*.done" --exclude="git2" downloads/
             ;;
+        downloads-git2)
+            echo "making downloads-git2 archive"
+            time tar caf downloads-git2.tar --exclude="*.done" downloads/git2
+            ;;
         sstate)
             echo "making sstate archive"
             time tar caf sstate.tar sstate-cache/
@@ -99,7 +103,7 @@ get_output() {
         build-logs|task-logs)
             scp $REMOTE:$REMOTE_PATH/$1.tar.xz .
             ;;
-        downloads|sstate)
+        downloads|sstate|downloads-git2)
             scp $REMOTE:$REMOTE_PATH/$1.tar .
             ;;
         all)
@@ -143,6 +147,7 @@ usage() {
     echo "                      does not  include the downloads/git2 dir"
     echo "                      enable BB_GENERATE_MIRROR_TARBALLS if you want"
     echo "                      to have mirrors of git content"
+    echo "    downloads-git2    only the download/git2 directory (huge) (5GB)"
     exit 3
 }
 
