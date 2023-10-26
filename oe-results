@@ -16,6 +16,7 @@ REMOTE_PATH=$2
 ACTION=$3
 REMOTE_SCRIPT_PATH=tmp-bin
 ALL="conf build-logs deploy task-logs sstate downloads"
+MOST="conf build-logs deploy task-logs"
 
 first_word() {
     echo "$1"
@@ -79,6 +80,9 @@ on_remote_make_tar() {
         all)
             on_remote_make_tar $ALL
             ;;
+        most)
+            on_remote_make_tar $MOST
+            ;;
         *)
             echo "Unknown part $1, skipping"
         esac
@@ -100,6 +104,9 @@ get_output() {
             ;;
         all)
             get_output $ALL
+            ;;
+        most)
+            get_output $MOST
             ;;
         *)
             echo "Unknown part $1, skipping"
@@ -125,6 +132,7 @@ usage() {
 #    echo "    cache-local       update local cache"
     echo "part is one of: (sizes for core-image-minimal)"
     echo "    all               default, all the below"
+    echo "    most              deploy conf build-logs task-logs"
     echo "    deploy            everything in the deploy dir (400MB)"
     echo "                      (images, packages, license)"
     echo "    conf              the conf dir used for the build (tiny) (1K)"
@@ -169,7 +177,7 @@ on-remote)
 
     # This pattern is common, handle it here
     if [ -z "$1" ]; then
-        PARTS=all
+        PARTS=most
     else
         PARTS="$@"
     fi
