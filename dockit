@@ -92,6 +92,14 @@ EOF
     chmod +x $TMPDIR/dockit_exec.sh
 }
 
+mk_exec2_script() {
+    cat >$TMPDIR/dockit_userjmp.sh <<EOF
+#!/bin/sh
+${DOCKIT_MOUNTDIR}/${TMPDIR}/${MY_SCRIPT_NAME} $@
+EOF
+    chmod +x $TMPDIR/dockit_exec2.sh
+}
+
 mk_idle_script() {
     cat >$TMPDIR/dockit_exec.sh <<EOF
 #!/bin/sh
@@ -121,13 +129,21 @@ run_batch() {
 
 run_interactive() {
     # docker start won't allocate a tty so we must do this
+    # also docker exec -u wont set the user's other groups so we need a new
+    # trampoline (dockit_exec2.sh)
     mk_idle_script
+    mk_exec2_script "$@"
     docker cp $TMPDIR/dockit_exec.sh ${CONTAINER_NAME}:/ >/dev/null
+    docker cp $TMPDIR/dockit_exec2.sh ${CONTAINER_NAME}:/ >/dev/null
     docker start $CONTAINER_NAME
-    docker exec -it -u $MY_UID:$MY_GID -w $DOCKIT_MOUNTDIR \
-        $CONTAINER_NAME $@
-    STATUS=$?
+    if docker exec -it -w $DOCKIT_MOUNTDIR \
+        $CONTAINER_NAME /dockit_exec2.sh; then
+        STATUS=0
+    else
+        STATUS=$?
+    fi
     docker stop -t 0 $CONTAINER_NAME
+    return $STATUS
 }
 
 do_top_level() {
