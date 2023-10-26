@@ -1,12 +1,13 @@
 #!/bin/bash
 
 set -e
+REMOTE_DEBUG=""
 
 if [ "$1" = "-d" ]; then
+    REMOTE_DEBUG="-d"
     set -x
     shift
 fi
-
 
 SCRIPT=$(basename $0)
 SCRIPT_PATH=$0
@@ -110,10 +111,11 @@ get_output() {
 
 usage() {
     echo "usage:"
-    echo "    $0 remote remote_path action [part part part ...]"
+    echo "    $0 [-d] remote remote_path action [part part part ...]"
     echo "where:"
     echo "    remote is any ssh remote like ubuntu@192.168.56.2"
     echo "    remote_path is the path to the build dir"
+    echo "    -d enables bash debug tracing at host and remote"
     echo "action is:"
 #    echo "    rsync             rsync files in parts to local machine"
     echo "    get-tar           get tar archives of parts to local machine"
@@ -140,7 +142,7 @@ remote-action() {
     REMOTE_ACTION=$1; shift
     ssh $REMOTE mkdir -p $REMOTE_SCRIPT_PATH
     scp $SCRIPT_PATH $REMOTE:$REMOTE_SCRIPT_PATH/$SCRIPT
-    ssh $REMOTE $REMOTE_SCRIPT_PATH/$SCRIPT \
+    ssh $REMOTE $REMOTE_SCRIPT_PATH/$SCRIPT $REMOTE_DEBUG \
         on-remote $REMOTE_PATH $REMOTE_ACTION "$@"
 }
 
