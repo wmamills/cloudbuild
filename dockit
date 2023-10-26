@@ -281,7 +281,7 @@ in_container_setup() {
         ./${PRJ_SCRIPT} admin_setup "$@"
 
         # project specific setup in user context
-        su $MY_USER ./${PRJ_SCRIPT} prj_setup "$@"
+        userjmp ./${PRJ_SCRIPT} prj_setup "$@"
     else
         default_setup
     fi
@@ -293,7 +293,7 @@ in_container_action() {
 
     if [ -f "./${PRJ_SCRIPT}" ]; then
         # project specific build/run, again in user context
-        ./${PRJ_SCRIPT} prj_build "$@"
+        userjmp ./${PRJ_SCRIPT} prj_build "$@"
     else
         default_actions "$@"
     fi
