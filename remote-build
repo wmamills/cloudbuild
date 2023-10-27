@@ -68,8 +68,55 @@ do_checkout() {
     esac
 }
 
-echo "running on $(hostname) with args=$@"
-if [ "$1" == on-remote ]; then
+help() {
+    echo "do a build on a remote machine via ssh"
+    echo ""
+    echo "usage: ./scripts/remote-build build-def"
+    echo "where build-def is a kas *.yml file or a *.sh file"
+    echo ""
+    echo "The build will be done for the current git HEAD so things need to be"
+    echo "checked in order to be seen by the remote build.  The checked in manifest"
+    echo "will be used for kas yml files so you need to push any local changes"
+    echo "to other git projects somewhere where the remote machine can see them"
+    echo "and you need to adjust the manifest."
+    echo ""
+    echo "the remote machine and base build path come from environment variables"
+    echo "    REMOTE_NAME"
+    echo "    REMOTE_DIR_BASE"
+    echo ""
+    echo "The REMOTE_NAME should be something that will work for your user "
+    echo "for ssh and scp.  If you do not wish to be prompted for a ssh"
+    echo "private key password use a ssh-agent or a throw-away key with no password."
+    echo ""
+    echo "The REMOTE_DIR_BASE will be the base path used for the build directory."
+    echo "relative paths will be from the ssh user's home dir just like scp."
+    echo "absolute paths will work also provided the ssh user has permission."
+    echo "The local projects name (its directory) and the build config will be"
+    echo "add to the REMOTE_DIR_BASE by default.  If you want more control or"
+    echo "wish to do all builds in the same directory set REMOTE_DIR instead"
+    echo ""
+    echo 'Example: .prjinfo/local/setenv'
+    echo ': ${REMOTE_NAME:=ubuntu@192.168.42.36}'
+    echo ': ${REMOTE_DIR_BASE:=/media/my-big-disk/my-user}'
+    echo ""
+    echo "The variable vaules can come from the user shell context or from"
+    echo "various files.  The settings in the files below are normally set"
+    echo "with weak definitions like this:"
+    echo ""
+    echo ': ${VARNAME:=VALUE}'
+    echo ""
+    echo "In this way the priority order becomes:"
+    echo "  environment variables from the users shell"
+    echo "  project local settings          ./.prjinfo/local/setenv"
+    echo "  project checked in settings     ./.prjinfo/setenv"
+    echo "  user home dir settings          ~/.prjinfo/setenv"
+}
+
+#echo "running on $(hostname) with args=$@"
+
+if [ -z "$1" ]; then
+    help
+elif [ "$1" == on-remote ]; then
     shift
     do_build "$@"
 elif [ "$1" == checkout ]; then
