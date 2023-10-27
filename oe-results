@@ -56,7 +56,7 @@ on_remote_prep_rsync() {
 
     while [ -n "$1" ]; do
         case "$1" in
-        deploy|conf|downloads|sstate)
+        deploy|conf|downloads|downloads-git2|sstate)
             # nothing to do in these cases
             true
             ;;
@@ -169,6 +169,7 @@ rsync_output() {
             ;;
         downloads-git2)
             echo "rsync $1"
+            mkdir -p downloads/git2
             rsync -a --stats --progress \
                 $REMOTE:$REMOTE_PATH/downloads/git2 downloads/git2
             ;;
