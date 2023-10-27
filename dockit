@@ -243,7 +243,7 @@ default_actions() {
         ;;
     *)
         # internal error, it should have been caught earlier
-        echo "unknown command $DOCKIT_COMMAND"
+        echo "unknown action $DOCKIT_ACTION in default_action"
         exit 1
         ;;
     esac
@@ -491,7 +491,7 @@ main() {
         help
         exit 1
     else
-        abort "Unknown command $1"
+        abort "Unknown action $1"
     fi
 }
 
