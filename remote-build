@@ -77,14 +77,6 @@ elif [ "$1" == checkout ]; then
     do_checkout "$@"
 else
     case $1 in
-    ci/*|for-ref/*)
-        TMP=${1#ci/}
-        TMP=${1#for-ref/}
-        TMP=${TMP%.yml}
-        TMP=${TMP%.sh}
-        BUILD_CONFIG=$TMP
-    esac
-    case $1 in
     *.yml)
         IS_YAML=true
         ;;
@@ -96,8 +88,14 @@ else
         exit 2
         ;;
     esac
+
+    # get sub-dir for build
+    TMP=${1%.yml}
+    TMP=${TMP%.sh}
+    BUILD_CONFIG=$TMP
+
     local_config
-    echo "Building on $REMOTE_NAME"
+    echo "Building on $REMOTE_NAME in path $REMOTE_DIR"
     push_this_git .
     if $IS_YAML & false; then
         ssh -t $REMOTE_NAME $REMOTE_DIR/scripts/remote-build checkout "$@"
