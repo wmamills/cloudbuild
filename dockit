@@ -295,7 +295,7 @@ in_container_action() {
         # project specific build/run, again in user context
         userjmp ./${PRJ_SCRIPT} prj_build "$@"
     else
-        default_actions "$@"
+        userjmp $MY_SCRIPT_FULL_PATH --internal-do-default_actions "$@"
     fi
     exit $?
 }
@@ -508,6 +508,13 @@ case "$1" in
 --internal-userjmp)
     shift
     in_container_userjmp "$@"
+    ;;
+--internal-do-*)
+    CMD=${1#--internal-do-}
+    shift
+    # call internal function by name matching * above
+    in_container_preamble
+    $CMD "$@"
     ;;
 *)
     main "$@"
