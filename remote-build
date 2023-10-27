@@ -8,8 +8,10 @@ fi
 
 set_defaults() {
     : ${BUILD_CONFIG:=default}
+    : ${PRJ_NAME:=$(basename $PWD)}
     : ${REMOTE_NAME:=dummy-remote}
-    : ${REMOTE_DIR:=ci-builds/$BUILD_CONFIG}
+    : ${REMOTE_DIR_BASE:=.}
+    : ${REMOTE_DIR:=$REMOTE_DIR_BASE/$PRJ_NAME/$BUILD_CONFIG}
 }
 
 local_config() {
