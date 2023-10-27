@@ -238,7 +238,7 @@ default_setup() {
     apt-get install -y build-essential git cmake
 }
 
-in_container_setup() {
+in_container_preamble() {
     CTRL_DIR=$(cd "$(dirname $0)"; pwd)
     PRJ_DIR=$(cd $CTRL_DIR/../../..; pwd)
 
@@ -247,6 +247,10 @@ in_container_setup() {
     # read vars from TEMPFILE
     source $CTRL_DIR/vars
     check_debug
+}
+
+in_container_setup() {
+    in_container_preamble
 
     # do common admin setup of the container
     setup_distro
@@ -260,17 +264,11 @@ in_container_setup() {
     else
         default_setup
     fi
+    exit $?
 }
 
 in_container_action() {
-    CTRL_DIR=$(cd "$(dirname $0)"; pwd)
-    PRJ_DIR=$(cd $CTRL_DIR/../../..; pwd)
-
-    cd ${PRJ_DIR}
-
-    # read vars from TEMPFILE
-    source $CTRL_DIR/vars
-    check_debug
+    in_container_preamble
 
     if [ -f "./${PRJ_SCRIPT}" ]; then
         # project specific build/run, again in user context
@@ -278,6 +276,7 @@ in_container_action() {
     else
         default_actions "$@"
     fi
+    exit $?
 }
 
 is_action() {
