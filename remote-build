@@ -79,6 +79,14 @@ do_checkout() {
     esac
 }
 
+check_script_for_info() {
+    if [ -x $1 ]; then
+        if grep -q "prjtools: support get-info" $1 >/dev/null; then
+            eval $($1 --get-info )
+        fi
+    fi
+}
+
 help() {
     echo "do a build on a remote machine via ssh"
     echo ""
@@ -153,6 +161,8 @@ else
     TMP=${1%.yml}
     TMP=${TMP%.sh}
     BUILD_CONFIG=$TMP
+
+    check_script_for_info "$@"
 
     local_config
     echo "Building on $REMOTE_NAME in path $REMOTE_DIR"
