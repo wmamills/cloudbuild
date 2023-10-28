@@ -5,6 +5,10 @@ if [ x"$1" == x"-d" ]; then
     shift
 fi
 
+SCRIPT=$(basename $0)
+SCRIPT_PATH=$0
+REMOTE_SCRIPT_PATH=.local/temp-bin
+REMOTE_SCRIPT=$REMOTE_SCRIPT_PATH/$SCRIPT
 
 set_defaults() {
     : ${BUILD_CONFIG:=default}
@@ -47,8 +51,13 @@ push_all_git() {
     done
 }
 
+push_this_script() {
+    ssh $REMOTE_NAME mkdir -p $REMOTE_SCRIPT_PATH
+    scp $SCRIPT_PATH $REMOTE_NAME:$REMOTE_SCRIPT
+    ssh $REMOTE_NAME chmod +x $REMOTE_SCRIPT
+}
+
 do_build() {
-    cd $(dirname $0)/..
     case $1 in
     *.yml)
         ~/.local/bin/kas build --update $1
@@ -59,7 +68,6 @@ do_build() {
 }
 
 do_checkout() {
-    cd $(dirname $0)/..
     case $1 in
     *.yml)
         echo "*** do checkout $1"
@@ -117,10 +125,12 @@ help() {
 if [ -z "$1" ]; then
     help
 elif [ "$1" == on-remote ]; then
-    shift
+    cd $2
+    shift 2
     do_build "$@"
 elif [ "$1" == checkout ]; then
-    shift
+    cd $2
+    shift 2
     do_checkout "$@"
 else
     case $1 in
@@ -144,9 +154,10 @@ else
     local_config
     echo "Building on $REMOTE_NAME in path $REMOTE_DIR"
     push_this_git .
+    push_this_script
     if $IS_YAML & false; then
-        ssh -t $REMOTE_NAME $REMOTE_DIR/scripts/remote-build checkout "$@"
+        ssh -t $REMOTE_NAME $REMOTE_SCRIPT checkout $REMOTE_DIR "$@"
         push_all_git
     fi
-    ssh -t $REMOTE_NAME $REMOTE_DIR/scripts/remote-build on-remote "$@"
+    ssh -t $REMOTE_NAME $REMOTE_SCRIPT on-remote $REMOTE_DIR "$@"
 fi
