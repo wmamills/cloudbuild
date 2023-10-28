@@ -165,7 +165,13 @@ else
     check_script_for_info "$@"
 
     local_config
-    echo "Building on $REMOTE_NAME in path $REMOTE_DIR"
+    if [ x"$BUILD_DIR" != x"build" ]; then
+        BUILD_DIR_MSG="( with build dir of $BUILD_DIR )"
+    else
+        BUILD_DIR_MSG=""
+    fi
+    echo "Building on $REMOTE_NAME in path $REMOTE_DIR $BUILD_DIR_MSG"
+
     push_this_git .
     push_this_script
     if $IS_YAML & false; then
