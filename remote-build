@@ -15,7 +15,10 @@ set_defaults() {
     : ${PRJ_NAME:=$(basename $PWD)}
     : ${REMOTE_NAME:=dummy-remote}
     : ${REMOTE_DIR_BASE:=.}
+    : ${BUILD_DIR:=build}
     : ${REMOTE_DIR:=$REMOTE_DIR_BASE/$PRJ_NAME/$BUILD_CONFIG}
+    : ${OUTPUT_DIR_BASE:=build-$(date +%Y-%m-%d)}
+    : ${OUTPUT_DIR:=$OUTPUT_DIR_BASE/$BUILD_CONFIG}
 }
 
 local_config() {
@@ -160,4 +163,9 @@ else
         push_all_git
     fi
     ssh -t $REMOTE_NAME $REMOTE_SCRIPT on-remote $REMOTE_DIR "$@"
+    if [ $? -eq 0 -a -n "$OE_RESULT_ACTION" ]; then
+        mkdir -p ${OUTPUT_DIR}
+        cd $OUTPUT_DIR
+        oe-results $REMOTE_NAME $REMOTE_DIR/$BUILD_DIR $OE_RESULT_ACTION $OE_RESULT_PARTS
+    fi
 fi
