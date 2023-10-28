@@ -14,7 +14,7 @@ SCRIPT_PATH=$0
 REMOTE=$1
 REMOTE_PATH=$2
 ACTION=$3
-REMOTE_SCRIPT_PATH=tmp-bin
+REMOTE_SCRIPT_PATH=.local/temp-bin/
 ALL="conf build-logs deploy task-logs sstate downloads downloads-git2"
 MOST="conf build-logs deploy task-logs"
 
