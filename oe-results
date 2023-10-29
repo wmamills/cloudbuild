@@ -155,31 +155,32 @@ get_output() {
     done
 }
 
+RSYNC_OPTS="--info=progress2 --info=name0"
 rsync_output() {
     while [ -n "$1" ]; do
         case "$1" in
         conf|build-logs|task-logs)
             echo "rsync $1"
-            rsync -a --stats --progress $REMOTE:$REMOTE_PATH/$1 .
+            rsync -a $RSYNC_OPTS $REMOTE:$REMOTE_PATH/$1 .
             ;;
         downloads)
             echo "rsync $1"
-            rsync -a --stats --progress --exclude="*.done" --exclude="git2" \
+            rsync -a $RSYNC_OPTS --exclude="*.done" --exclude="git2" \
                 $REMOTE:$REMOTE_PATH/$1 .
             ;;
         downloads-git2)
             echo "rsync $1"
             mkdir -p downloads/git2
-            rsync -a --stats --progress \
+            rsync -a $RSYNC_OPTS \
                 $REMOTE:$REMOTE_PATH/downloads/git2 downloads/git2
             ;;
         sstate)
             echo "rsync $1"
-            rsync -a --stats --progress $REMOTE:$REMOTE_PATH/sstate-cache .
+            rsync -a $RSYNC_OPTS $REMOTE:$REMOTE_PATH/sstate-cache .
             ;;
         deploy)
             echo "rsync $1"
-            rsync -a --stats --progress $REMOTE:$REMOTE_PATH/$OE_TMP_DIR/$1 .
+            rsync -a $RSYNC_OPTS $REMOTE:$REMOTE_PATH/$OE_TMP_DIR/$1 .
             ;;
         all)
             rsync_output $ALL
