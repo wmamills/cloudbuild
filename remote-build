@@ -63,9 +63,17 @@ push_this_script() {
 do_build() {
     case $1 in
     *.yml)
+        if [ -x ./scripts/pre-build.sh ]; then
+            ./scripts/pre-build.sh
+        fi
         ~/.local/bin/kas build --update $1
+        if [ -x ./scripts/post-build.sh ]; then
+            ./scripts/pots-build.sh
+        fi
         ;;
     *.sh)
+        # if directly running a script, let it decide to run pre-, post- build
+        # scripts or not
         ./$1
     esac
 }
