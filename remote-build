@@ -19,6 +19,7 @@ set_defaults() {
     : ${REMOTE_DIR:=$REMOTE_DIR_BASE/$PRJ_NAME/$BUILD_CONFIG}
     : ${OUTPUT_DIR_BASE:=build-$(date +%Y-%m-%d)}
     : ${OUTPUT_DIR:=$OUTPUT_DIR_BASE/$BUILD_CONFIG}
+    : ${OUTPUT_LINK:=build-${BUILD_CONFIG}-latest}
 }
 
 local_config() {
@@ -189,7 +190,16 @@ else
     ssh -t $REMOTE_NAME $REMOTE_SCRIPT on-remote $REMOTE_DIR "$@"
     if [ $? -eq 0 -a -n "$OE_RESULT_ACTION" ]; then
         mkdir -p ${OUTPUT_DIR}
+        LINK_NAME=${PWD}/${OUTPUT_LINK}
         cd $OUTPUT_DIR
         oe-results $REMOTE_NAME $REMOTE_DIR/$BUILD_DIR $OE_RESULT_ACTION $OE_RESULT_PARTS
+        if [ -n "${OUTPUT_LINK}" ]; then
+            if [ -e ${LINK_NAME} -a ! -h ${LINK_NAME} ]; then
+                echo "${OUTPUT_LINK} exists and is not a symlink, NOT updating!"
+            else
+                ln -sf -T $OUTPUT_DIR $LINK_NAME
+                ls -l ${LINK_NAME}
+            fi
+        fi
     fi
 fi
