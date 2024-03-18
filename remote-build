@@ -65,11 +65,11 @@ do_build() {
     case $1 in
     *.yml)
         if [ -x ./scripts/pre-build.sh ]; then
-            ./scripts/pre-build.sh
+            CONTEXT="remote" ./scripts/pre-build.sh
         fi
         ~/.local/bin/kas build --update $1
         if [ -x ./scripts/post-build.sh ]; then
-            ./scripts/pots-build.sh
+            CONTEXT="remote" ./scripts/post-build.sh
         fi
         ;;
     *.sh)
@@ -169,11 +169,16 @@ else
     # get sub-dir for build
     TMP=${1%.yml}
     TMP=${TMP%.sh}
-    BUILD_CONFIG=$TMP
+    export BUILD_CONFIG=$TMP
 
     check_script_for_info "$@"
 
     local_config
+
+    if [ -x ./scripts/pre-build.sh ]; then
+        CONTEXT="host" ./scripts/pre-build.sh
+    fi
+
     if [ x"$BUILD_DIR" != x"build" ]; then
         BUILD_DIR_MSG="( with build dir of $BUILD_DIR )"
     else
@@ -188,9 +193,11 @@ else
         push_all_git
     fi
     ssh -t $REMOTE_NAME $REMOTE_SCRIPT on-remote $REMOTE_DIR "$@"
+
     if [ $? -eq 0 -a -n "$OE_RESULT_ACTION" ]; then
         mkdir -p ${OUTPUT_DIR}
         LINK_NAME=${PWD}/${OUTPUT_LINK}
+        ORIG_DIR=${PWD}
         cd $OUTPUT_DIR
         oe-results $REMOTE_NAME $REMOTE_DIR/$BUILD_DIR $OE_RESULT_ACTION $OE_RESULT_PARTS
         if [ -n "${OUTPUT_LINK}" ]; then
@@ -201,5 +208,10 @@ else
                 ls -l ${LINK_NAME}
             fi
         fi
+        cd $ORIG_DIR
+    fi
+
+    if [ -x ./scripts/post-build.sh ]; then
+        CONTEXT="host" ./scripts/post-build.sh
     fi
 fi
