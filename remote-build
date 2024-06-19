@@ -61,16 +61,21 @@ push_this_script() {
     ssh $REMOTE_NAME chmod +x $REMOTE_SCRIPT
 }
 
+push_prjinfo_local() {
+    if [ ! -d .prjinfo/local ]; then
+        return
+    fi
+
+    ssh $REMOTE_NAME mkdir -p $REMOTE_DIR/.prjinfo/local
+    scp .prjinfo/local $REMOTE_NAME:$REMOTE_DIR/.prjinfo/
+}
+
 do_build() {
     case $1 in
     *.yml)
-        if [ -x ./scripts/pre-build.sh ]; then
-            CONTEXT="remote" ./scripts/pre-build.sh
-        fi
+        CONTEXT="remote" run_script pre-build.sh
         ~/.local/bin/kas build --update $1
-        if [ -x ./scripts/post-build.sh ]; then
-            CONTEXT="remote" ./scripts/post-build.sh
-        fi
+        CONTEXT="remote" run_script post-build.sh
         ;;
     *.sh)
         # if directly running a script, let it decide to run pre-, post- build
@@ -94,6 +99,17 @@ check_script_for_info() {
             eval $($1 --get-info )
         fi
     fi
+}
+
+run_script() {
+    SCRIPT_NAME=$1; shift
+
+    for d in ./.prjinto/local ./prjinfo .; do
+        if [ -x $d/scripts/$SCRIPT_NAME ]; then
+            $d/scripts/$SCRIPT_NAME "$@"
+            return
+        fi
+    done
 }
 
 help() {
@@ -175,9 +191,7 @@ else
 
     local_config
 
-    if [ -x ./scripts/pre-build.sh ]; then
-        CONTEXT="host" ./scripts/pre-build.sh
-    fi
+    CONTEXT="host" run_script pre-build.sh
 
     if [ x"$BUILD_DIR" != x"build" ]; then
         BUILD_DIR_MSG="( with build dir of $BUILD_DIR )"
@@ -188,6 +202,7 @@ else
 
     push_this_git .
     push_this_script
+    push_prjinfo_local
     if $IS_YAML & false; then
         ssh -t $REMOTE_NAME $REMOTE_SCRIPT checkout $REMOTE_DIR "$@"
         push_all_git
@@ -211,7 +226,5 @@ else
         cd $ORIG_DIR
     fi
 
-    if [ -x ./scripts/post-build.sh ]; then
-        CONTEXT="host" ./scripts/post-build.sh
-    fi
+    CONTEXT="host" run_script post-build.sh
 fi
