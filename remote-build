@@ -105,7 +105,7 @@ check_script_for_info() {
 run_script() {
     SCRIPT_NAME=$1; shift
 
-    for d in ./.prjinto/local ./prjinfo .; do
+    for d in ./.prjinfo/local ./.prjinfo .; do
         if [ -x $d/scripts/$SCRIPT_NAME ]; then
             $d/scripts/$SCRIPT_NAME "$@"
             return
