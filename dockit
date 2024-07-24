@@ -147,8 +147,8 @@ run_interactive() {
 }
 
 do_top_level() {
-    export DISTRO
-    export PRJ_SCRIPT
+    export DOCKIT_DISTRO
+    export DOCKIT_PRJ_SCRIPT
     add_local_gitignore
     local_config
     mktemp
@@ -251,6 +251,7 @@ default_actions() {
 
 default_setup() {
     echo "Using default setup function"
+    echo DOCKIT_PRJ_SCRIPT=$DOCKIT_PRJ_SCRIPT
     apt-get install -y build-essential git cmake
 }
 
@@ -276,12 +277,12 @@ in_container_setup() {
     # do common admin setup of the container
     setup_distro
 
-    if [ -f "./${PRJ_SCRIPT}" ]; then
+    if [ -f "./${DOCKIT_PRJ_SCRIPT}" ]; then
         # now execute the command the user specified (or project specific setup)
-        ./${PRJ_SCRIPT} admin_setup "$@"
+        ./${DOCKIT_PRJ_SCRIPT} admin_setup "$@"
 
         # project specific setup in user context
-        userjmp ./${PRJ_SCRIPT} prj_setup "$@"
+        userjmp ./${DOCKIT_PRJ_SCRIPT} prj_setup "$@"
     else
         default_setup
     fi
@@ -291,9 +292,9 @@ in_container_setup() {
 in_container_action() {
     in_container_preamble
 
-    if [ -f "./${PRJ_SCRIPT}" ]; then
+    if [ -f "./${DOCKIT_PRJ_SCRIPT}" ]; then
         # project specific build/run, again in user context
-        userjmp ./${PRJ_SCRIPT} prj_build "$@"
+        userjmp ./${DOCKIT_PRJ_SCRIPT} prj_build "$@"
     else
         userjmp $MY_SCRIPT_FULL_PATH --internal-do-default_actions "$@"
     fi
