@@ -352,14 +352,15 @@ help() {
     echo "--global          look at all dockit created containers"
     echo ""
     echo "default options will be loaded from"
-    echo "    .prj/local/dockit"
-    echo "    .prj/dockit"
+    echo "    .prjinfo/local/dockit"
+    echo "    .prjinfo/dockit"
     echo "    ~/.prjtool/dockit"
     echo ""
     echo "example:"
     echo "  $ dockit build"
     echo "  $ dockit --distro fedora:rawhide build linux"
     echo "  $ dockit --temp-ok --mr-clean --branch origin/main build"
+    echo "  $ dockit --global --older-than 7 purge"
 }
 
 get_dockit_options() {
