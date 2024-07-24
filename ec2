@@ -48,8 +48,8 @@ check_setup() {
 }
 
 set_defaults() {
-    : ${EC2_INSTANCE_TYPE:=m6i.2xlarge}
-    : ${DISTRO:=ubuntu-20.04}
+    : ${EC2_INSTANCE_TYPE:=m7i.2xlarge}
+    : ${DISTRO:=ubuntu-24.04}
     : ${OS_DISK_SIZE:=250}
     : ${EC2_NAME:=aws01}
     : ${AWS_PROFILE:=default}
