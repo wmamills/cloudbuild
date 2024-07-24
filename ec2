@@ -301,7 +301,7 @@ aws_get_distro_info() {
         ROOT_USER=ubuntu
         OWNER=$UBUNTU_OWNER
         REST=${DISTRO#ubuntu-}
-        IMAGE_NAME="ubuntu/images/hvm-ssd/ubuntu-*-${REST}-${DEB_ARCH}-server-"
+        IMAGE_NAME="ubuntu/images/hvm-ssd*/ubuntu-*-${REST}-${DEB_ARCH}-server-"
         ;;
     debian-10)
         ROOT_USER=admin
