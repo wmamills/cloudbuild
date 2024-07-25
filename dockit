@@ -93,7 +93,7 @@ EOF
 }
 
 mk_exec2_script() {
-    cat >$TMPDIR/dockit_userjmp.sh <<EOF
+    cat >$TMPDIR/dockit_exec2.sh <<EOF
 #!/bin/sh
 ${DOCKIT_MOUNTDIR}/${TMPDIR}/${MY_SCRIPT_NAME} $@
 EOF
