@@ -135,14 +135,14 @@ run_interactive() {
     mk_exec2_script "$@"
     docker cp $TMPDIR/dockit_exec.sh ${CONTAINER_NAME}:/ >/dev/null
     docker cp $TMPDIR/dockit_exec2.sh ${CONTAINER_NAME}:/ >/dev/null
-    docker start $CONTAINER_NAME
+    docker start $CONTAINER_NAME >/dev/null
     if docker exec -it -w $DOCKIT_MOUNTDIR \
         $CONTAINER_NAME /dockit_exec2.sh; then
         STATUS=0
     else
         STATUS=$?
     fi
-    docker stop -t 0 $CONTAINER_NAME
+    docker stop -t 0 $CONTAINER_NAME >/dev/null
     return $STATUS
 }
 
