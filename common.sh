@@ -63,6 +63,26 @@ get_distro_type() {
     fi
 }
 
+add_basics() {
+    case "$TYPE" in
+    debian)
+        apt update -q
+        ;;
+    fedora|rhel)
+        dnf install -y which passwd
+        ;;
+    *)
+        echo "don't know how to install basics for distro type: $TYPE"
+        if which useradd; then
+            echo "Will try to go on"
+        else
+            echo "basics not present, giving up"
+            exit 127
+        fi
+        ;;
+    esac
+}
+
 # add sudo package to machine, needs to run as root
 add_sudo() {
     # do we already have it?
@@ -72,14 +92,10 @@ add_sudo() {
 
     case "$TYPE" in
     debian)
-        apt update
         apt install -y sudo
         ;;
-    fedora)
+    fedora|rhel)
         dnf install -y sudo
-        ;;
-    rhel)
-        yum install -y sudo
         ;;
     *)
         echo "don't know how to install sudo for distro type: $TYPE"
@@ -91,6 +107,8 @@ add_sudo() {
 # do setup for user, needs to run as root
 setup_distro() {
     get_distro_type
+    add_basics
+
     if id $MY_UID; then
         OLD_USER=$(id -nu $MY_UID)
         echo "Removing user $OLD_USER, as it conflicts with user $MY_USER $MY_UID:$MY_GID"

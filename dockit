@@ -252,7 +252,20 @@ default_actions() {
 default_setup() {
     echo "Using default setup function"
     echo DOCKIT_PRJ_SCRIPT=$DOCKIT_PRJ_SCRIPT
-    apt-get install -y build-essential git cmake
+
+    get_distro_type
+    case "$TYPE" in
+    debian)
+        apt-get install -y build-essential git cmake bison flex
+        ;;
+    fedora|rhel)
+        dnf install -y make automake gcc gcc-c++ git cmake kernel-devel
+        ;;
+    *)
+        echo "don't know how to install sudo for distro type: $TYPE"
+        exit 127
+        ;;
+    esac
 }
 
 userjmp() {
