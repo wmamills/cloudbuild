@@ -270,7 +270,21 @@ default_setup() {
 
 userjmp() {
     # su man page suggests I do this:
-    setpriv --reuid=$MY_UID --regid=$MY_GID --init-groups --reset-env "$@"
+    # setpriv --reuid=$MY_UID --regid=$MY_GID --init-groups --reset-env "$@"
+
+    # util-linux < 2.33 does not support --reset-env
+    ENV_OPT="--reset-env"
+    if ! setpriv --help | grep -q -e "$ENV_OPT"; then
+        ENV_OPT="$MY_SCRIPT_FULL_PATH --internal-do-userjmp2"
+    fi
+
+    setpriv --reuid=$MY_UID --regid=$MY_GID --init-groups $ENV_OPT "$@"
+}
+
+userjmp2() {
+    export HOME="/home/$MY_USER"
+    export SHLVL=0
+    "$@"
 }
 
 in_container_preamble() {
@@ -509,6 +523,8 @@ main() {
         abort "Unknown action $1"
     fi
 }
+
+# echo "Invocation $0 " "$@"
 
 # First off figure out if we are on the host or the container
 case "$1" in
