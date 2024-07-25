@@ -91,6 +91,11 @@ add_sudo() {
 # do setup for user, needs to run as root
 setup_distro() {
     get_distro_type
+    if id $MY_UID; then
+        OLD_USER=$(id -nu $MY_UID)
+        echo "Removing user $OLD_USER, as it conflicts with user $MY_USER $MY_UID:$MY_GID"
+        userdel $OLD_USER
+    fi
     groupadd --gid $MY_GID $MY_USER
     useradd  --uid $MY_UID --gid $MY_GID --shell /bin/bash -mN $MY_USER
 
@@ -99,7 +104,7 @@ setup_distro() {
     yes)
         add_sudo
         groupadd --system sudo_np
-        adduser $MY_USER sudo_np
+        usermod -a -G sudo_np $MY_USER
         mkdir -p /etc/sudoers.d/
         echo "%sudo_np ALL=(ALL:ALL) NOPASSWD:ALL" >/etc/sudoers.d/sudo_np
         ;;
