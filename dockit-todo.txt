@@ -38,7 +38,7 @@ x sub-commands
     x remove existing users that conflict (for ubuntu:23.04 etc)
     * import env settings before "make" command
 * distro setup
-    * set hostname
+    x set hostname
     * setup timezone (UTC or match user)
     * setup LANG/locale
 

@@ -44,6 +44,10 @@ source $MY_SCRIPT_DIR/common.sh
 set_defaults() {
     # Specify defaults
     : ${DOCKIT_DISTRO:=ubuntu:latest}
+    DISTRO_NAME=${DOCKIT_DISTRO//:/-}     # replace colons with dash
+
+    : ${DOCKIT_HOSTNAME:=$DISTRO_NAME}
+
     : ${DOCKIT_PRJ_SCRIPT:=.prj/prj_setup.sh}
     : ${DOCKIT_MOUNTDIR:=/prj}
     : ${DOCKIT_BRANCH:=./WORKTREE}
@@ -63,7 +67,6 @@ set_defaults() {
 }
 
 mktemp() {
-    local DISTRO_NAME=${DOCKIT_DISTRO//:/-}     # replace colons with dash
 
     TMPDIR=.prjinfo/local/${MY_SCRIPT_NAME}-${DISTRO_NAME}
     mkdir -p $TMPDIR
@@ -163,6 +166,7 @@ do_top_level() {
         echo -n "Creating container ..."
         docker create \
         -v "${PWD}:${DOCKIT_MOUNTDIR}" \
+        -h "$DOCKIT_HOSTNAME" \
         --name $CONTAINER_NAME \
         --label dockit \
         $DOCKIT_DISTRO \
