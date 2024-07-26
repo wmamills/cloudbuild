@@ -182,7 +182,7 @@ do_top_level() {
 
     case "$DOCKIT_ACTION" in
     shell)
-        run_interactive --internal-userjmp /bin/bash "$@"
+        run_interactive --internal-userjmp /bin/bash -l "$@"
         STATUS=$?
         ;;
     icmd)
