@@ -23,6 +23,7 @@ SAVE_VARS="
 DOCKIT_DEBUG
 DOCKIT_ACTION
 DOCKIT_DISTRO
+DOCKIT_HOSTNAME
 DOCKIT_BRANCH
 DOCKIT_TOP_DIR
 DOCKIT_MOUNTDIR
@@ -57,7 +58,7 @@ set_defaults() {
     : ${DOCKIT_ISOLATE:=false}
     : ${DOCKIT_READ_ONLY:=false}
     : ${DOCKIT_TEMP:=no}
-    : ${DOCKIT_PURGE_GLOBAL:=false}
+    : ${DOCKIT_GLOBAL:=false}
     : ${MY_UID:=$(id -u)}
     : ${MY_GID:=$(id -g)}
     : ${MY_USER:=$(whoami)}
@@ -342,7 +343,7 @@ in_container_userjmp() {
 
 is_action() {
     case "$1" in
-    build|shell|cmd|icmd|purge)
+    build|shell|cmd|icmd|purge|status)
         return 0
         ;;
     *)
@@ -358,6 +359,7 @@ help() {
     echo "shell     get a shell in the container"
     echo "cmd       do an arbitrary command in the container"
     echo "icmd      do an arbitrary interactive command in the container"
+    echo "status    give a status of all containers for this project"
     echo "purge     delete all containers for this project"
     echo ""
     echo "dockit options:"
@@ -378,9 +380,11 @@ help() {
     echo "--temp-ok         delete the container if the return code is ok"
     echo "--mr-clean        --rebuild --generic --isolate"
     echo ""
+    echo "options for status or purge"
+    echo "--global          look at all dockit created containers"
+    echo ""
     echo "options for purge"
     echo "--older-than N    delete all containers that have not run in N days"
-    echo "--global          look at all dockit created containers"
     echo ""
     echo "default options will be loaded from"
     echo "    .prjinfo/local/dockit"
@@ -391,6 +395,7 @@ help() {
     echo "  $ dockit build"
     echo "  $ dockit --distro fedora:rawhide build linux"
     echo "  $ dockit --temp-ok --mr-clean --branch origin/main build"
+    echo "  $ dockit status"
     echo "  $ dockit --global --older-than 7 purge"
 }
 
@@ -454,7 +459,7 @@ get_dockit_options() {
             SHIFT_COUNT=$(( $SHIFT_COUNT + 2 ))
             ;;
         --global)
-            DOCKIT_PURGE_GLOBAL=true
+            DOCKIT_GLOBAL=true
             shift 1
             SHIFT_COUNT=$(( $SHIFT_COUNT + 1 ))
             ;;
@@ -478,7 +483,7 @@ get_dockit_options() {
 do_purge() {
     local_config
 
-    if $DOCKIT_PURGE_GLOBAL; then
+    if $DOCKIT_GLOBAL; then
         if [ -n "$DOCKIT_OLDER_THAN" ]; then
             UNTIL="$(( $DOCKIT_OLDER_THAN * 24 ))h"
         else
@@ -499,10 +504,39 @@ do_purge() {
     fi
 }
 
+do_status() {
+    local_config
+
+    if $DOCKIT_GLOBAL; then
+        docker container ls -a -s \
+            --filter "label=dockit" \
+            --format "table {{ .Names }}\t{{ .Image }}\t{{ .Size }}\t{{ .Status }}"
+    else
+        for i in .prjinfo/local/${MY_SCRIPT_NAME}-*; do
+            if [ -d $i -a -r $i/name ]; then
+                CONTAINER_NAME=$(cat $i/name)
+                if container_exists; then
+                    DOCKIT_HOSTNAME=$(
+                        unset DOCKIT_HOSTNAME
+                        source $i/vars;
+                        : ${DOCKIT_HOSTNAME:=$DOCKIT_DISTRO};
+                        echo $DOCKIT_HOSTNAME)
+                    printf "%-40s" $DOCKIT_HOSTNAME
+                    docker container list -a -s \
+                    --format "{{ .Size }}\t{{ .Status }}" \
+                    --filter="name=${CONTAINER_NAME}"
+                else
+                    echo "$CONTAINER_NAME  <deleted>"
+                fi
+            fi
+        done
+    fi
+}
+
 do_action() {
     case $DOCKIT_ACTION in
     # These commands are done on the host side
-    purge)
+    purge|status)
         do_${DOCKIT_ACTION}
         ;;
 
