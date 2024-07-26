@@ -66,7 +66,7 @@ get_distro_type() {
 add_basics() {
     case "$TYPE" in
     debian)
-        apt update -q
+        apt-get -qq update
         ;;
     fedora|rhel)
         dnf install -y which passwd
@@ -92,7 +92,7 @@ add_sudo() {
 
     case "$TYPE" in
     debian)
-        apt install -y sudo
+        apt-get install -y sudo
         ;;
     fedora|rhel)
         dnf install -y sudo
@@ -109,7 +109,7 @@ setup_distro() {
     get_distro_type
     add_basics
 
-    if id $MY_UID; then
+    if id $MY_UID >/dev/null 2>&1; then
         OLD_USER=$(id -nu $MY_UID)
         echo "Removing user $OLD_USER, as it conflicts with user $MY_USER $MY_UID:$MY_GID"
         userdel $OLD_USER

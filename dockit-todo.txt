@@ -13,6 +13,8 @@ x sub-commands
     x purge
 * options
     x distro
+        * add "last" option for distro which runs the most recently run
+    * add arch option to run foreign arch
     x rebuild
     x purge global
     x purge older than
@@ -25,6 +27,9 @@ x sub-commands
     * read-only
     * top (dir)
     * mount (dir)
+    * detached (ie no-wait)
+        * check for running job in normal flow
+        * implement wait & attach commands
 * processing
     x REFIX SUDO for user
     x get default options

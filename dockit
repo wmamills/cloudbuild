@@ -97,7 +97,7 @@ mktemp() {
 
     # make vars file
     TMPFILE=$TMPDIR/vars
-    echo "#created automatically by dockit, do not edit" >$TMPFILE
+    echo "# created automatically by dockit, do not edit" >$TMPFILE
     for v in $SAVE_VARS; do
         echo "export $v=\"${!v}\"" >>$TMPFILE
     done
