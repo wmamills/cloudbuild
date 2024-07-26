@@ -49,7 +49,6 @@ set_defaults() {
 
     : ${DOCKIT_HOSTNAME:=$DISTRO_NAME}
 
-    : ${DOCKIT_PRJ_SCRIPT:=.prj/prj_setup.sh}
     : ${DOCKIT_MOUNTDIR:=/prj}
     : ${DOCKIT_BRANCH:=./WORKTREE}
     : ${DOCKIT_TOP_DIR:=.}
@@ -65,6 +64,30 @@ set_defaults() {
     # DOCKIT_OLDER_THAN not defined by default
 
     : ${OPT_SUDO:=yes}
+
+    if [ -z "${DOCKIT_PRJ_SCRIPT}" ]; then
+        if find_script prj_script.sh; then
+            DOCKIT_PRJ_SCRIPT=$FOUND_SCRIPT
+        fi
+    fi
+}
+
+find_script() {
+    SCRIPT_NAME=$1; shift
+
+    for d in ./.prjinfo/local ./.prjinfo .; do
+        FOUND_SCRIPT=$d/scripts/$SCRIPT_NAME
+        if [ -f ${DOCKIT_TOP_DIR}/$FOUND_SCRIPT ]; then
+            if [ -x ${DOCKIT_TOP_DIR}/$FOUND_SCRIPT ]; then
+                return 0
+            else
+                echo "ignoring non-executable script $FOUND_SCRIPT"
+            fi
+        fi
+    done
+
+    FOUND_SCRIPT=""
+    return 1
 }
 
 mktemp() {
@@ -256,7 +279,6 @@ default_actions() {
 
 default_setup() {
     echo "Using default setup function"
-    echo DOCKIT_PRJ_SCRIPT=$DOCKIT_PRJ_SCRIPT
 
     get_distro_type
     case "$TYPE" in
@@ -301,6 +323,8 @@ in_container_preamble() {
     # read vars from TEMPFILE
     source $CTRL_DIR/vars
     check_debug
+
+    PRJ_SCRIPT=${DOCKIT_PRJ_SCRIPT:+${PRJ_DIR}/${DOCKIT_PRJ_SCRIPT}}
 }
 
 in_container_setup() {
@@ -309,12 +333,12 @@ in_container_setup() {
     # do common admin setup of the container
     setup_distro
 
-    if [ -f "./${DOCKIT_PRJ_SCRIPT}" ]; then
+    if [ -x "${PRJ_SCRIPT}" ]; then
         # now execute the command the user specified (or project specific setup)
-        ./${DOCKIT_PRJ_SCRIPT} admin_setup "$@"
+        ${PRJ_SCRIPT} admin_setup "$@"
 
         # project specific setup in user context
-        userjmp ./${DOCKIT_PRJ_SCRIPT} prj_setup "$@"
+        userjmp "${PRJ_SCRIPT}" prj_setup "$@"
     else
         default_setup
     fi
@@ -324,9 +348,9 @@ in_container_setup() {
 in_container_action() {
     in_container_preamble
 
-    if [ -f "./${DOCKIT_PRJ_SCRIPT}" ]; then
+    if [ -x "${PRJ_SCRIPT}" ]; then
         # project specific build/run, again in user context
-        userjmp ./${DOCKIT_PRJ_SCRIPT} prj_build "$@"
+        userjmp ${PRJ_SCRIPT} prj_build "$@"
     else
         userjmp $MY_SCRIPT_FULL_PATH --internal-do-default_actions "$@"
     fi

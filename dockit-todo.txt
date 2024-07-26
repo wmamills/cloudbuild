@@ -30,7 +30,7 @@ x sub-commands
     x get default options
     x make distro setup run just once
     x make prj setup run just once
-    * find prj_script file
+    x find prj_script file
     * find (default) top dir
     * handle relative mount dirs (users home dir)
     * use top dir name as mount dir name by default
