@@ -48,7 +48,8 @@ set_defaults() {
     : ${DOCKIT_DISTRO:=ubuntu:latest}
     DISTRO_NAME=${DOCKIT_DISTRO//:/-}     # replace colons with dash
 
-    : ${DOCKIT_HOSTNAME:=$DISTRO_NAME}
+    # replace periods with dash
+    : ${DOCKIT_HOSTNAME:=${DISTRO_NAME//./-}}
 
     : ${DOCKIT_MOUNTDIR:=/prj}
     : ${DOCKIT_BRANCH:=./WORKTREE}
