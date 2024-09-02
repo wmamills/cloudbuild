@@ -23,6 +23,7 @@ SAVE_VARS="
 DOCKIT_DEBUG
 DOCKIT_ACTION
 DOCKIT_DISTRO
+DOCKIT_ARCH
 DOCKIT_HOSTNAME
 DOCKIT_BRANCH
 DOCKIT_TOP_DIR
@@ -56,6 +57,7 @@ set_defaults() {
     : ${DOCKIT_GENERIC:=false}
     : ${DOCKIT_ISOLATE:=false}
     : ${DOCKIT_READ_ONLY:=false}
+    : ${DOCKIT_ARCH:=native}
     : ${DOCKIT_TEMP:=no}
     : ${DOCKIT_GLOBAL:=false}
     : ${MY_UID:=$(id -u)}
@@ -91,8 +93,8 @@ find_script() {
 }
 
 mktemp() {
-
-    TMPDIR=.prjinfo/local/${MY_SCRIPT_NAME}-${DISTRO_NAME}
+    TMPDIR_NAME=${MY_SCRIPT_NAME}-${DOCKIT_ARCH}-${DISTRO_NAME}
+    TMPDIR=.prjinfo/local/$TMPDIR_NAME
     mkdir -p $TMPDIR
 
     # make vars file
@@ -429,6 +431,11 @@ get_dockit_options() {
         case "$1" in
         --distro)
             DOCKIT_DISTRO=$2
+            shift 2
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 2 ))
+            ;;
+        --arch)
+            DOCKIT_ARCH=$2
             shift 2
             SHIFT_COUNT=$(( $SHIFT_COUNT + 2 ))
             ;;
