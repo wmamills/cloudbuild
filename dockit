@@ -98,6 +98,16 @@ mktemp() {
     TMPDIR=.prjinfo/local/$TMPDIR_NAME
     mkdir -p $TMPDIR
 
+    if [ -r $TMPDIR/name ]; then
+        CONTAINER_NAME=$(cat $TMPDIR/name)
+    else
+        TMP1=$(cd . ; dirs +0)  # get project name with ~ for HOME
+        TMP1=${TMP1//\~/H}       # replace tidle with 'H'
+        TMP1=${TMP1//\//_}      # replace all slashes with underscores
+        CONTAINER_NAME=dockit_${TMP1}__${DISTRO_NAME}_${DOCKIT_ARCH}
+        echo $CONTAINER_NAME                    >$TMPDIR/name
+    fi
+
     # make vars file
     TMPFILE=$TMPDIR/vars
     echo "# created automatically by dockit, do not edit" >$TMPFILE
@@ -105,11 +115,6 @@ mktemp() {
         echo "export $v=\"${!v}\"" >>$TMPFILE
     done
 
-    TMP1=$(cd . ; dirs +0)  # get project name with ~ for HOME
-    TMP1=${TMP1//\~/H}       # replace tidle with 'H'
-    TMP1=${TMP1//\//_}      # replace all slashes with underscores
-    CONTAINER_NAME=dockit_${TMP1}__${DISTRO_NAME}
-    echo $CONTAINER_NAME                    >$TMPDIR/name
 
     cp $MY_SCRIPT_FULL_PATH $MY_SCRIPT_DIR/common.sh $TMPDIR
 }
