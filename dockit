@@ -193,6 +193,20 @@ run_interactive() {
     return $STATUS
 }
 
+# create the container
+create_container() {
+    rm -rf $TMPDIR/setup_done || true
+
+    echo -n "Creating container ..."
+    docker create \
+    -v "${PWD}:${DOCKIT_MOUNTDIR}" \
+    -h "$DOCKIT_HOSTNAME" \
+    --name $CONTAINER_NAME \
+    --label dockit \
+    $DOCKIT_DISTRO \
+    /dockit_exec.sh
+}
+
 do_top_level() {
     export DOCKIT_DISTRO
     export DOCKIT_PRJ_SCRIPT
@@ -205,16 +219,7 @@ do_top_level() {
     fi
 
     if ! container_exists; then
-        rm -rf $TMPDIR/setup_done || true
-
-        echo -n "Creating container ..."
-        docker create \
-        -v "${PWD}:${DOCKIT_MOUNTDIR}" \
-        -h "$DOCKIT_HOSTNAME" \
-        --name $CONTAINER_NAME \
-        --label dockit \
-        $DOCKIT_DISTRO \
-        /dockit_exec.sh
+        create_container
     fi
 
     # do the setup
