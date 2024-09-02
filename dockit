@@ -21,7 +21,6 @@ MY_SCRIPT_DIR=$(dirname $MY_SCRIPT_FULL_PATH)
 # Names of vars to be transported to the other side
 SAVE_VARS="
 DOCKIT_DEBUG
-DOCKIT_ACTION
 DOCKIT_DISTRO
 DOCKIT_ARCH
 DOCKIT_HOSTNAME
@@ -29,7 +28,6 @@ DOCKIT_BRANCH
 DOCKIT_TOP_DIR
 DOCKIT_MOUNTDIR
 DOCKIT_PRJ_SCRIPT
-DOCKIT_REBUILD
 DOCKIT_GENERIC
 DOCKIT_ISOLATE
 DOCKIT_READ_ONLY
@@ -40,10 +38,18 @@ MY_GID
 OPT_SUDO
 "
 
+CHECK_LAST=true
+LAST_FILE=.prjinfo/local/${MY_SCRIPT_NAME}-last
+
 source $MY_SCRIPT_DIR/common.sh
 
 # These are the lowest priority defaults
 set_defaults() {
+
+    if $CHECK_LAST && [ -r "$LAST_FILE"/vars ]; then
+        . "$LAST_FILE"/vars
+    fi
+
     # Specify defaults
     : ${DOCKIT_DISTRO:=ubuntu:latest}
     DISTRO_NAME=${DOCKIT_DISTRO//:/-}     # replace colons with dash
@@ -117,6 +123,12 @@ mktemp() {
 
 
     cp $MY_SCRIPT_FULL_PATH $MY_SCRIPT_DIR/common.sh $TMPDIR
+
+    # Update the last symlink
+    if [ "$DOCKIT_TEMP" == "no" ]; then
+        rm -f $LAST_FILE >/dev/null 2>&1
+        ln -s $TMPDIR_NAME $LAST_FILE
+    fi
 }
 
 mk_exec_script() {
@@ -439,11 +451,13 @@ get_dockit_options() {
             DOCKIT_DISTRO=$2
             shift 2
             SHIFT_COUNT=$(( $SHIFT_COUNT + 2 ))
+            CHECK_LAST=false
             ;;
         --arch)
             DOCKIT_ARCH=$2
             shift 2
             SHIFT_COUNT=$(( $SHIFT_COUNT + 2 ))
+            CHECK_LAST=false
             ;;
         --script)
             DOCKIT_PRJ_SCRIPT=$2
@@ -484,11 +498,13 @@ get_dockit_options() {
             DOCKIT_TEMP=yes
             shift 1
             SHIFT_COUNT=$(( $SHIFT_COUNT + 1 ))
+            CHECK_LAST=false
             ;;
         --temp-ok)
             DOCKIT_TEMP=ok
             shift 1
             SHIFT_COUNT=$(( $SHIFT_COUNT + 1 ))
+            CHECK_LAST=false
             ;;
         --older-than)
             DOCKIT_OLDER_THAN=$2
@@ -531,13 +547,14 @@ do_purge() {
             --filter "label=dockit"
     else
         for i in .prjinfo/local/${MY_SCRIPT_NAME}-*; do
-            if [ -d $i -a -r $i/name ]; then
+            if [ -d $i -a ! -L $i -a -r $i/name ]; then
                 CONTAINER_NAME=$(cat $i/name)
                 if delete_container; then
                     rm -rf $i
                 fi
             fi
         done
+        rm -rf .prjinfo/local/${MY_SCRIPT_NAME}-last || true
     fi
 }
 
@@ -550,7 +567,7 @@ do_status() {
             --format "table {{ .Names }}\t{{ .Image }}\t{{ .Size }}\t{{ .Status }}"
     else
         for i in .prjinfo/local/${MY_SCRIPT_NAME}-*; do
-            if [ -d $i -a -r $i/name ]; then
+            if [ -d $i -a ! -L $i -a -r $i/name ]; then
                 CONTAINER_NAME=$(cat $i/name)
                 if container_exists; then
                     DOCKIT_HOSTNAME=$(
@@ -574,6 +591,7 @@ do_action() {
     case $DOCKIT_ACTION in
     # These commands are done on the host side
     purge|status)
+        CHECK_LAST=false
         do_${DOCKIT_ACTION}
         ;;
 
