@@ -608,12 +608,11 @@ do_status() {
             if [ -d $i -a ! -L $i -a -r $i/name ]; then
                 CONTAINER_NAME=$(cat $i/name)
                 if container_exists; then
-                    DOCKIT_HOSTNAME=$(
-                        unset DOCKIT_HOSTNAME
+                    INFO=$(
+                        unset DOCKIT_DISTRO DOCKIT_ARCH
                         source $i/vars;
-                        : ${DOCKIT_HOSTNAME:=$DOCKIT_DISTRO};
-                        echo $DOCKIT_HOSTNAME)
-                    printf "%-40s" $DOCKIT_HOSTNAME
+                        printf "%-30s %-9s" "$DOCKIT_DISTRO" "$DOCKIT_ARCH")
+                    printf "%-s" "$INFO"
                     docker container list -a -s \
                     --format "{{ .Size }}\t{{ .Status }}" \
                     --filter="name=${CONTAINER_NAME}"
