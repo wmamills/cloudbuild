@@ -67,6 +67,7 @@ set_defaults() {
     : ${DOCKIT_ARCH:=native}
     : ${DOCKIT_TEMP:=no}
     : ${DOCKIT_GLOBAL:=false}
+    : ${DOCKIT_PULL:=false}
     : ${MY_UID:=$(id -u)}
     : ${MY_GID:=$(id -g)}
     : ${MY_USER:=$(whoami)}
@@ -200,8 +201,8 @@ foreign_pull() {
     # do we already have a base image locally?
     EXISTING_ID=$(docker image list --format json $DOCKIT_ARCH/$DOCKIT_DISTRO | jq -r '.ID')
 
-    # if so use it
-    if [ -n "$EXISTING_ID" ]; then
+    # if so use it unless we have been told to pull a new one anyway
+    if [ -n "$EXISTING_ID" ] && ! $DOCKIT_PULL; then
         return
     fi
 
@@ -223,6 +224,9 @@ create_container() {
     if [ "$DOCKIT_ARCH" == "native" ]; then
         TMP_IMAGE_NAME=$DOCKIT_DISTRO
         PLATFORM_ARG=""
+        if $DOCKIT_PULL; then
+            docker pull $TMP_IMAGE_NAME
+        fi
     else
         TMP_IMAGE_NAME=$DOCKIT_ARCH/$DOCKIT_DISTRO
         PLATFORM_ARG="--platform $DOCKIT_ARCH"
@@ -454,6 +458,7 @@ help() {
     echo "--generic         don't personalize to the user"
     echo "--isolate         don't mount project dir in container"
     echo "--read-only       mount project dir in container as read-only"
+    echo "--pull            pull a new base image before container create"
     echo "--top-dir dir     specify the top project dir"
     echo "--mount           specify the mount point in the container of the"
     echo "                  top project dir. Can be absolute or relative"
@@ -514,6 +519,11 @@ get_dockit_options() {
             ;;
         --rebuild)
             DOCKIT_REBUILD=true
+            shift 1
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 1 ))
+            ;;
+        --pull)
+            DOCKIT_PULL=true
             shift 1
             SHIFT_COUNT=$(( $SHIFT_COUNT + 1 ))
             ;;
