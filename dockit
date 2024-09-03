@@ -193,9 +193,41 @@ run_interactive() {
     return $STATUS
 }
 
+# docker should have a pull --as option but it does not
+# leaving foreign container images in normal name space causes issues
+# so we do this
+foreign_pull() {
+    # do we already have a base image locally?
+    EXISTING_ID=$(docker image list --format json $DOCKIT_ARCH/$DOCKIT_DISTRO | jq -r '.ID')
+
+    # if so use it
+    if [ -n "$EXISTING_ID" ]; then
+        return
+    fi
+
+    OLD_ID=$(docker image list --format json $DOCKIT_DISTRO | jq -r '.ID')
+    docker pull --platform $DOCKIT_ARCH $DOCKIT_DISTRO
+    NEW_ID=$(docker image list --format json $DOCKIT_DISTRO | jq -r '.ID')
+    docker tag $NEW_ID $DOCKIT_ARCH/$DOCKIT_DISTRO
+    if [ x"$OLD_ID" == x"" ]; then
+        docker rmi $DISTRO
+    else
+        docker tag $OLD_ID $DOCKIT_DISTRO
+    fi
+}
+
 # create the container
 create_container() {
     rm -rf $TMPDIR/setup_done || true
+
+    if [ "$DOCKIT_ARCH" == "native" ]; then
+        TMP_IMAGE_NAME=$DOCKIT_DISTRO
+        PLATFORM_ARG=""
+    else
+        TMP_IMAGE_NAME=$DOCKIT_ARCH/$DOCKIT_DISTRO
+        PLATFORM_ARG="--platform $DOCKIT_ARCH"
+        foreign_pull
+    fi
 
     echo -n "Creating container ..."
     docker create \
@@ -203,7 +235,8 @@ create_container() {
     -h "$DOCKIT_HOSTNAME" \
     --name $CONTAINER_NAME \
     --label dockit \
-    $DOCKIT_DISTRO \
+    $PLATFORM_ARG \
+    $TMP_IMAGE_NAME \
     /dockit_exec.sh
 }
 
