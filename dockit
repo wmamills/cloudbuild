@@ -351,7 +351,7 @@ default_setup() {
         dnf install -y make automake gcc gcc-c++ git cmake kernel-devel
         ;;
     *)
-        echo "don't know how to install sudo for distro type: $TYPE"
+        echo "don't know how to do default setup for distro type: $TYPE"
         exit 127
         ;;
     esac
