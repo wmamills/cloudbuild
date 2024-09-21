@@ -14,7 +14,7 @@ x sub-commands
 * options
     x distro
         * add "last" option for distro which runs the most recently run
-    * add arch option to run foreign arch
+    x add arch option to run foreign arch
     x rebuild
     x purge global
     x purge older than
@@ -30,6 +30,7 @@ x sub-commands
     * detached (ie no-wait)
         * check for running job in normal flow
         * implement wait & attach commands
+    * add option to make an docker image based of distro setup, all setup, or full build
 * processing
     x REFIX SUDO for user
     x get default options
@@ -42,6 +43,11 @@ x sub-commands
     * allow user to set shorter project name rather than H_w_proj etc
     x remove existing users that conflict (for ubuntu:23.04 etc)
     * import env settings before "make" command
+    * allow multiple shells commands to be active, w/ last one out to stop
+	https://unix.stackexchange.com/questions/274498/performing-atomic-write-operations-in-a-file-in-bash
+    * allow shell and build to be active at the same time
+    * allow resume of distro setup if it is stopped half way through
+    * add individual markers for distro_, admin_, and prj_ setup
 * distro setup
     x set hostname
     * setup timezone (UTC or match user)
