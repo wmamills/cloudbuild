@@ -239,6 +239,7 @@ create_container() {
     -h "$DOCKIT_HOSTNAME" \
     --name $CONTAINER_NAME \
     --label dockit \
+    "${DOCKIT_EXTRA_ARGS[@]}" \
     $PLATFORM_ARG \
     $TMP_IMAGE_NAME \
     /dockit_exec.sh
