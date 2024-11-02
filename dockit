@@ -341,6 +341,10 @@ default_actions() {
 }
 
 default_setup() {
+    echo "There is no default setup function"
+}
+
+default_setup_old() {
     echo "Using default setup function"
 
     get_distro_type
