@@ -1,7 +1,7 @@
 dockit:
 * move to python
         * move config to yaml
-x put junk files in ./prjinfo/local/tmp
+x put junk files in ./prjinfo/local/dockit-<distro>-<arch>
 x add ./prjinfo/local to .git/.gitignore
 x per distro tmpdir
 x persist container (per distro)
@@ -11,10 +11,15 @@ x sub-commands
     x cmd
     x shell
     x icmd
-    x purge
+    x purge (remove conatiners in bulk)
+    * image (create docker image)
+    * stop (stop container)
+    * kill (stop and remove one container)
 * options
     x distro
         * add "last" option for distro which runs the most recently run
+          Still want this? This is the default w/o --distro, --arch, or --temp*
+        * If distro does not have tag add :latest
         x Make version of DISTRO w/ slashes converted to dashes
     x add arch option to run foreign arch
         x Make version of ARCH w/ slashes converted to dashes
@@ -25,7 +30,16 @@ x sub-commands
     x temp
     x temp-ok
     x new
+    * last=no,use,update
+        n|no=don't use last and don't update it
+        y|yes=use last (update does not make sense) this is default
+        update=don't use last but update it
+    * setup=none,distro,admin,prj
     * branch
+        remote@treeish
+        remote can be . for local git, remote name, or url
+        treeish can be branch, commit, or tag, HEAD, WORKTREE
+        default is .@WORKTREE
     * script
     * isolate
     * generic
