@@ -53,11 +53,19 @@ set_defaults() {
 
     # Specify defaults
     : ${DOCKIT_DISTRO:=ubuntu:latest}
-    DISTRO_NAME=${DOCKIT_DISTRO//:/-}     # replace colons with dash
+    : ${DOCKIT_ARCH:=native}
 
-    # replace periods with dash
-    : ${DOCKIT_HOSTNAME:=${DISTRO_NAME//./-}}
+    # make filename friendly versions of DISTRO and ARCH
+    DISTRO_NAME=${DOCKIT_DISTRO//:/-}   # replace colon with dash
+    DISTRO_NAME=${DISTRO_NAME//\//-}    # replace slash with dash
+    ARCH_NAME=${DOCKIT_ARCH//\//-}      # replace slash with dash
 
+    DEF_HOSTNAME=${DISTRO_NAME//\./-}    # replace dot with dash
+    if [ "$DOCKIT_ARCH" != "native" ]; then
+        DEF_HOSTNAME=${DEF_HOSTNAME}-${ARCH_NAME}
+    fi
+
+    : ${DOCKIT_HOSTNAME:=$DEF_HOSTNAME}
     : ${DOCKIT_MOUNTDIR:=/prj}
     : ${DOCKIT_BRANCH:=./WORKTREE}
     : ${DOCKIT_TOP_DIR:=.}
@@ -65,7 +73,6 @@ set_defaults() {
     : ${DOCKIT_GENERIC:=false}
     : ${DOCKIT_ISOLATE:=false}
     : ${DOCKIT_READ_ONLY:=false}
-    : ${DOCKIT_ARCH:=native}
     : ${DOCKIT_TEMP:=no}
     : ${DOCKIT_GLOBAL:=false}
     : ${DOCKIT_PULL:=false}
@@ -102,7 +109,7 @@ find_script() {
 }
 
 mktemp() {
-    TMPDIR_NAME=${MY_SCRIPT_NAME}-${DOCKIT_ARCH}-${DISTRO_NAME}
+    TMPDIR_NAME=${MY_SCRIPT_NAME}-${ARCH_NAME}-${DISTRO_NAME}
     TMPDIR=.prjinfo/local/$TMPDIR_NAME
     mkdir -p $TMPDIR
 
@@ -112,7 +119,7 @@ mktemp() {
         TMP1=$(cd . ; dirs +0)  # get project name with ~ for HOME
         TMP1=${TMP1//\~/H}       # replace tidle with 'H'
         TMP1=${TMP1//\//_}      # replace all slashes with underscores
-        CONTAINER_NAME=dockit_${TMP1}__${DISTRO_NAME}_${DOCKIT_ARCH}
+        CONTAINER_NAME=dockit_${TMP1}__${DISTRO_NAME}_${ARCH_NAME}
         echo $CONTAINER_NAME                    >$TMPDIR/name
     fi
 
@@ -200,7 +207,7 @@ run_interactive() {
 # so we do this
 foreign_pull() {
     # do we already have a base image locally?
-    EXISTING_ID=$(docker image list --format json $DOCKIT_ARCH/$DOCKIT_DISTRO | jq -r '.ID')
+    EXISTING_ID=$(docker image list --format json $ARCH_NAME/$DOCKIT_DISTRO | jq -r '.ID')
 
     # if so use it unless we have been told to pull a new one anyway
     if [ -n "$EXISTING_ID" ] && ! $DOCKIT_PULL; then
@@ -210,9 +217,9 @@ foreign_pull() {
     OLD_ID=$(docker image list --format json $DOCKIT_DISTRO | jq -r '.ID')
     docker pull --platform $DOCKIT_ARCH $DOCKIT_DISTRO
     NEW_ID=$(docker image list --format json $DOCKIT_DISTRO | jq -r '.ID')
-    docker tag $NEW_ID $DOCKIT_ARCH/$DOCKIT_DISTRO
+    docker tag $NEW_ID $ARCH_NAME/$DOCKIT_DISTRO
     if [ x"$OLD_ID" == x"" ]; then
-        docker rmi $DISTRO
+        docker rmi $DOCKIT_DISTRO
     else
         docker tag $OLD_ID $DOCKIT_DISTRO
     fi
@@ -229,7 +236,7 @@ create_container() {
             docker pull $TMP_IMAGE_NAME
         fi
     else
-        TMP_IMAGE_NAME=$DOCKIT_ARCH/$DOCKIT_DISTRO
+        TMP_IMAGE_NAME=$ARCH_NAME/$DOCKIT_DISTRO
         PLATFORM_ARG="--platform $DOCKIT_ARCH"
         foreign_pull
     fi

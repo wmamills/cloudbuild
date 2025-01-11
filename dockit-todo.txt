@@ -15,7 +15,10 @@ x sub-commands
 * options
     x distro
         * add "last" option for distro which runs the most recently run
+        x Make version of DISTRO w/ slashes converted to dashes
     x add arch option to run foreign arch
+        x Make version of ARCH w/ slashes converted to dashes
+          This allows --arch linux/arm/v7 etc
     x rebuild
     x purge global
     x purge older than
