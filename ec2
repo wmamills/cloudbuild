@@ -22,7 +22,7 @@ SCRIPT_FULL_PATH=$(readlink -f $0)
 SCRIPT_DIR=$(dirname $SCRIPT_FULL_PATH)
 ALL_MODE=none
 
-source $SCRIPT_DIR/common.sh
+source $SCRIPT_DIR/prjtool-common.sh
 
 check_setup() {
     # make sure aws command is avilable

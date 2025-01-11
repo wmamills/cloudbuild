@@ -5,6 +5,7 @@ x put junk files in ./prjinfo/local/tmp
 x add ./prjinfo/local to .git/.gitignore
 x per distro tmpdir
 x persist container (per distro)
+x rename common.sh to prjtool-common.sh (for easier embedding)
 x sub-commands
     x build
     x cmd

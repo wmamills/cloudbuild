@@ -42,7 +42,7 @@ CHECK_LAST=true
 NEW_OK=false
 LAST_FILE=.prjinfo/local/${MY_SCRIPT_NAME}-last
 
-source $MY_SCRIPT_DIR/common.sh
+source $MY_SCRIPT_DIR/prjtool-common.sh
 
 # These are the lowest priority defaults
 set_defaults() {
@@ -124,7 +124,7 @@ mktemp() {
     done
 
 
-    cp $MY_SCRIPT_FULL_PATH $MY_SCRIPT_DIR/common.sh $TMPDIR
+    cp $MY_SCRIPT_FULL_PATH $MY_SCRIPT_DIR/prjtool-common.sh $TMPDIR
 
     # Update the last symlink
     if [ "$DOCKIT_TEMP" == "no" ]; then
