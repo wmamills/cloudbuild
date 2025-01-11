@@ -69,7 +69,7 @@ add_basics() {
         apt-get -qq update
         ;;
     fedora|rhel)
-        dnf install -y which passwd
+        dnf install -y which passwd util-linux
         ;;
     *)
         echo "don't know how to install basics for distro type: $TYPE"
