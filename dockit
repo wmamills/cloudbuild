@@ -39,6 +39,7 @@ OPT_SUDO
 "
 
 CHECK_LAST=true
+NEW_OK=false
 LAST_FILE=.prjinfo/local/${MY_SCRIPT_NAME}-last
 
 source $MY_SCRIPT_DIR/common.sh
@@ -245,11 +246,38 @@ create_container() {
     /dockit_exec.sh
 }
 
+ask_ok() {
+    while true; do
+    echo "OK to proceed? y/n"
+    read answer
+        case $answer in
+        y|Y|yes|YES)
+            return 0
+            ;;
+        n|N|no|NO)
+            return 1
+            ;;
+        *)
+            :
+            ;;
+    esac
+    done
+}
+
 do_top_level() {
     export DOCKIT_DISTRO
     export DOCKIT_PRJ_SCRIPT
+
     add_local_gitignore
     local_config
+
+    if [ ! -d .prjinfo ] && ! $NEW_OK; then
+        echo "About to create the first container for $PWD"
+        if ! ask_ok; then
+            exit 1
+        fi
+    fi
+
     mktemp
 
     if container_exists && $DOCKIT_REBUILD; then
@@ -470,6 +498,7 @@ help() {
     echo "                  to user's $HOME"
     echo "--temp            delete the container after it has finished"
     echo "--temp-ok         delete the container if the return code is ok"
+    echo "--new             don't ask to proceed even if .prjinfo not found"
     echo "--mr-clean        --rebuild --generic --isolate"
     echo ""
     echo "options for status or purge"
@@ -574,6 +603,11 @@ get_dockit_options() {
             shift 1
             SHIFT_COUNT=$(( $SHIFT_COUNT + 1 ))
             check_debug
+            ;;
+        --new)
+            NEW_OK=true
+            shift 1
+            SHIFT_COUNT=$(( $SHIFT_COUNT + 1 ))
             ;;
         --*)
             echo unknown option "$1"

@@ -20,6 +20,7 @@ x sub-commands
     x purge older than
     x temp
     x temp-ok
+    x new
     * branch
     * script
     * isolate
@@ -48,6 +49,7 @@ x sub-commands
     * allow shell and build to be active at the same time
     * allow resume of distro setup if it is stopped half way through
     * add individual markers for distro_, admin_, and prj_ setup
+    X require confirmation before creating a .prjinfo dir unless --new is specified
 * distro setup
     x set hostname
     * setup timezone (UTC or match user)
