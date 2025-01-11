@@ -57,6 +57,12 @@ set_defaults() {
 
     # make filename friendly versions of DISTRO and ARCH
     DISTRO_NAME=${DOCKIT_DISTRO//:/-}   # replace colon with dash
+    if [ "$DISTRO_NAME" == "$DOCKIT_DISTRO" ]; then
+        # distro has no tag, add :latest
+        DOCKIT_DISTRO="${DOCKIT_DISTRO}:latest"
+        DISTRO_NAME=${DOCKIT_DISTRO//:/-}   # do it again
+    fi
+
     DISTRO_NAME=${DISTRO_NAME//\//-}    # replace slash with dash
     ARCH_NAME=${DOCKIT_ARCH//\//-}      # replace slash with dash
 

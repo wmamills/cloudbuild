@@ -19,7 +19,8 @@ x sub-commands
     x distro
         * add "last" option for distro which runs the most recently run
           Still want this? This is the default w/o --distro, --arch, or --temp*
-        * If distro does not have tag add :latest
+        x If distro does not have tag add :latest
+            (foreign_pull has issues otherwise)
         x Make version of DISTRO w/ slashes converted to dashes
     x add arch option to run foreign arch
         x Make version of ARCH w/ slashes converted to dashes
