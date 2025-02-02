@@ -27,7 +27,7 @@ make_build_logs() {
     mkdir -p build-logs/$OE_TMP_DIR
     cp *.log build-logs/
     cp -a $OE_TMP_DIR/log build-logs/$OE_TMP_DIR
-    cp -a $OE_TMP_DIR/buildstats build-logs/$OE_TMP_DIR
+    cp -a $OE_TMP_DIR/buildstats build-logs/$OE_TMP_DIR || true
 }
 
 make_task_logs() {
